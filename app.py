@@ -56,3 +56,12 @@ folium_static(m)
 st.write(f"最後更新時間: {time.strftime('%H:%M:%S')}")
 time.sleep(30)
 st.rerun()
+
+import datetime
+
+# 替換掉原本最後一行 st.write
+taiwan_time = datetime.datetime.now() + datetime.timedelta(hours=8)
+st.write(f"最後更新時間 (台灣): {taiwan_time.strftime('%H:%M:%S')}")
+
+if st.button('手動整理地圖'):
+    st.rerun()
