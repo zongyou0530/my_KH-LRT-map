@@ -1,0 +1,4 @@
+requests
+folium
+streamlit
+streamlit-folium
