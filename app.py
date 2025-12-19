@@ -5,11 +5,9 @@ from streamlit_folium import folium_static
 import time
 import datetime
 
-# 設定網頁標題
 st.set_page_config(page_title="高雄輕軌即時位置")
 st.title("🚂 高雄輕軌即時位置監測")
 
-# 從 Streamlit 的 Secrets 讀取金鑰
 CLIENT_ID = st.secrets["TDX_CLIENT_ID"]
 CLIENT_SECRET = st.secrets["TDX_CLIENT_SECRET"]
 
@@ -32,31 +30,31 @@ try:
 except:
     positions = []
 
-# 建立地圖
 m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
+train_count = 0 # 新增計數器
 
-# --- 防呆機制與繪製標記 ---
-if not positions:
-    st.warning("⚠️ 目前 API 未回傳即時列車位置（可能為非營運時段，請於 07:00-22:00 間查看）。")
-else:
-    for train in positions:
-        lat = train.get('PositionLat')
-        lon = train.get('PositionLon')
-        if lat and lon:
-            folium.Marker(
-                location=[lat, lon],
-                popup=f"車號: {train.get('TrainNo', '未知')}",
-                icon=folium.Icon(color='red', icon='train', prefix='fa')
-            ).add_to(m)
+# 嘗試畫標記
+for train in positions:
+    lat = train.get('PositionLat')
+    lon = train.get('PositionLon')
+    if lat and lon:
+        folium.Marker(
+            location=[lat, lon],
+            popup=f"車號: {train.get('TrainNo', '未知')}",
+            icon=folium.Icon(color='red', icon='train', prefix='fa')
+        ).add_to(m)
+        train_count += 1
 
-# 顯示地圖
+# --- 智慧判斷：如果地圖上沒半台車，就顯示警告 ---
+if train_count == 0:
+    st.warning("⚠️ 目前地圖上無即時列車資訊（可能為非營運時段 22:00-07:00 或系統更新中）。")
+
 folium_static(m)
 
-# --- 台灣時區時間顯示 ---
+# 顯示正確的台灣時間
 now = datetime.datetime.now() + datetime.timedelta(hours=8)
-current_time = now.strftime("%H:%M:%S")
-st.write(f"最後更新時間 (台灣): {current_time}")
+st.write(f"最後更新時間 (台灣): {now.strftime('%H:%M:%S')}")
 
-# 30秒後自動重整
+# 自動重整
 time.sleep(30)
 st.rerun()
