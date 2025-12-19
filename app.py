@@ -3,12 +3,13 @@ import requests
 import folium
 from streamlit_folium import folium_static
 import time
+import datetime
 
 # 設定網頁標題
 st.set_page_config(page_title="高雄輕軌即時位置")
 st.title("🚂 高雄輕軌即時位置監測")
 
-# 從 Streamlit 的 Secrets 讀取金鑰 (等等會教你設定)
+# 從 Streamlit 的 Secrets 讀取金鑰
 CLIENT_ID = st.secrets["TDX_CLIENT_ID"]
 CLIENT_SECRET = st.secrets["TDX_CLIENT_SECRET"]
 
@@ -25,46 +26,37 @@ def get_data(token):
     return res.json().get('LivePositions', [])
 
 # 執行抓取
-token = get_token()
-positions = get_data(token)
+try:
+    token = get_token()
+    positions = get_data(token)
+except:
+    positions = []
 
-# --- 替換開始：增加防呆機制 ---
 # 建立地圖
 m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
 
-# 檢查是否有列車資料
+# --- 防呆機制與繪製標記 ---
 if not positions:
     st.warning("⚠️ 目前 API 未回傳即時列車位置（可能為非營運時段，請於 07:00-22:00 間查看）。")
 else:
     for train in positions:
-        # 使用 .get() 語法避免找不到欄位而當機
         lat = train.get('PositionLat')
         lon = train.get('PositionLon')
-        
-        if lat and lon: # 只有在經緯度都存在時才畫標記
+        if lat and lon:
             folium.Marker(
                 location=[lat, lon],
                 popup=f"車號: {train.get('TrainNo', '未知')}",
                 icon=folium.Icon(color='red', icon='train', prefix='fa')
             ).add_to(m)
-# --- 替換結束 ---
 
 # 顯示地圖
 folium_static(m)
 
-# 設定自動重新整理 (Streamlit 的小技巧)
-st.write(f"最後更新時間: {time.strftime('%H:%M:%S')}")
-time.sleep(30)
-st.rerun()
-
-import datetime
-
-# --- 替換最後兩行 ---
-import datetime
-
-# 取得 UTC 時間並加上 8 小時
+# --- 台灣時區時間顯示 ---
 now = datetime.datetime.now() + datetime.timedelta(hours=8)
 current_time = now.strftime("%H:%M:%S")
-
 st.write(f"最後更新時間 (台灣): {current_time}")
-# ------------------
+
+# 30秒後自動重整
+time.sleep(30)
+st.rerun()
