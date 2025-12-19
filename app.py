@@ -59,9 +59,12 @@ st.rerun()
 
 import datetime
 
-# 替換掉原本最後一行 st.write
-taiwan_time = datetime.datetime.now() + datetime.timedelta(hours=8)
-st.write(f"最後更新時間 (台灣): {taiwan_time.strftime('%H:%M:%S')}")
+# --- 替換最後兩行 ---
+import datetime
 
-if st.button('手動整理地圖'):
-    st.rerun()
+# 取得 UTC 時間並加上 8 小時
+now = datetime.datetime.now() + datetime.timedelta(hours=8)
+current_time = now.strftime("%H:%M:%S")
+
+st.write(f"最後更新時間 (台灣): {current_time}")
+# ------------------
