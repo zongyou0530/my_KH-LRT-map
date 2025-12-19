@@ -28,14 +28,26 @@ def get_data(token):
 token = get_token()
 positions = get_data(token)
 
+# --- 替換開始：增加防呆機制 ---
 # 建立地圖
 m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
-for train in positions:
-    folium.Marker(
-        location=[train['PositionLat'], train['PositionLon']],
-        popup=f"車號: {train.get('TrainNo')}",
-        icon=folium.Icon(color='red', icon='train', prefix='fa')
-    ).add_to(m)
+
+# 檢查是否有列車資料
+if not positions:
+    st.warning("⚠️ 目前 API 未回傳即時列車位置（可能為非營運時段，請於 07:00-22:00 間查看）。")
+else:
+    for train in positions:
+        # 使用 .get() 語法避免找不到欄位而當機
+        lat = train.get('PositionLat')
+        lon = train.get('PositionLon')
+        
+        if lat and lon: # 只有在經緯度都存在時才畫標記
+            folium.Marker(
+                location=[lat, lon],
+                popup=f"車號: {train.get('TrainNo', '未知')}",
+                icon=folium.Icon(color='red', icon='train', prefix='fa')
+            ).add_to(m)
+# --- 替換結束 ---
 
 # 顯示地圖
 folium_static(m)
