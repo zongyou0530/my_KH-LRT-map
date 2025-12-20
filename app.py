@@ -30,13 +30,23 @@ ALL_STATIONS = {
 
 # 網頁配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
+# 修改字體的 CSS 區塊
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@700&display=swap');
-    html, body, [class*="css"] { font-family: 'Noto Sans TC', sans-serif; }
+    /* 1. 從 Google Fonts 引用新字體 (這裡換成圓體) */
+    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700&display=swap');
+
+    /* 2. 套用到全網頁 */
+    html, body, [class*="css"], .stMarkdown {
+        font-family: 'M PLUS Rounded 1c', sans-serif;
+    }
+
+    /* 3. 針對地圖內的站名標籤也要統一 (如果是 DivIcon 繪製的) */
+    .leaflet-div-icon {
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+    }
     </style>
     """, unsafe_allow_html=True)
-
 st.title("🚂 高雄輕軌即時位置監測")
 
 # 對話框區
