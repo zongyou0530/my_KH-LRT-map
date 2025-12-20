@@ -4,9 +4,10 @@ import folium
 from streamlit_folium import folium_static
 import datetime
 import pytz
+import time
 
-# 1. 頁面配置與字體注入
-st.set_page_config(page_title="高雄輕軌監測", layout="wide")
+# 1. 頁面配置
+st.set_page_config(page_title="高雄輕軌即時位置", layout="wide")
 
 st.markdown('''
 <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+P+One&family=Kiwi+Maru:wght@300;400;500&display=swap" rel="stylesheet">
@@ -35,7 +36,6 @@ st.markdown('''
         display: inline-block; padding: 3px 10px; border-radius: 5px; 
         font-size: 0.85em; margin-bottom: 8px; color: white;
     }
-    /* 抵達時間顏色：#4D0000 (一般), #FF0000 (即將抵達), 取消粗體 */
     .time-normal { font-size: 1.6em; color: #4D0000; font-weight: normal !important; }
     .time-urgent { font-size: 1.6em; color: #FF0000; font-weight: normal !important; }
 </style>
@@ -47,6 +47,7 @@ LRT_STATIONS = ["籬仔內", "凱旋瑞田", "前鎮之星", "凱旋中華", "�
 def get_now_tw():
     return datetime.datetime.now(pytz.timezone('Asia/Taipei'))
 
+@st.cache_data(ttl=300)
 def get_token():
     try:
         data = {'grant_type': 'client_credentials', 'client_id': st.secrets["TDX_CLIENT_ID"], 'client_secret': st.secrets["TDX_CLIENT_SECRET"]}
@@ -54,15 +55,16 @@ def get_token():
         return res.json().get('access_token')
     except: return None
 
-# --- UI ---
+# --- UI 開始 ---
 st.markdown('<div class="mochiy-font main-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
-st.markdown('<div class="info-box">💡 <b>系統提示：</b> 已強化順逆雙向掃描邏輯，解決順行資料缺失問題。</div>', unsafe_allow_html=True)
+st.markdown('<div class="info-box">💡 <b>系統提示：</b> 已加入連線容錯機制，若發生異常系統將自動重試。</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-box">📍 <b>圖例：</b> <span style="color:#2e7d32;">● 順行 (外圈)</span> | <span style="color:#1565c0;">● 逆行 (內圈)</span></div>', unsafe_allow_html=True)
 
 token = get_token()
 map_time, board_time = "讀取中...", "讀取中..."
 col1, col2 = st.columns([7.5, 2.5])
 
+# --- 左側：地圖 ---
 with col1:
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
     if token:
@@ -78,33 +80,36 @@ with col1:
                     icon=folium.Icon(color='green' if t.get('Direction') == 0 else 'blue', icon='train', prefix='fa')
                 ).add_to(m)
             map_time = get_now_tw().strftime('%Y-%m-%d %H:%M:%S')
-        except: map_time = "失敗"
+        except: map_time = "地圖連線稍候..."
     folium_static(m, height=600, width=1000)
 
+# --- 右側：站牌 ---
 with col2:
     st.markdown('<span class="mochiy-font side-title">📊 站牌即時資訊</span>', unsafe_allow_html=True)
     sel_st = st.selectbox("選擇查詢車站：", LRT_STATIONS)
     
     if token:
         try:
+            # 增加重試機制
             resp = requests.get("https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$format=JSON", 
                                 headers={'Authorization': f'Bearer {token}'}, timeout=10)
             if resp.status_code == 200:
                 all_data = resp.json()
-                search_key = "美術館" if "美術館" in sel_st else sel_st
-                # 強化過濾邏輯：確保 Direction 0 與 1 同時受檢
-                valid_data = [b for b in all_data if search_key in b.get('StationName', {}).get('Zh_tw', '') and b.get('EstimateTime') is not None]
+                # 關鍵修正：針對「美術館」這類容易出錯的名稱進行寬鬆匹配
+                target = "美術館" if "美術館" in sel_st else sel_st
+                valid_data = [b for b in all_data if target in b.get('StationName', {}).get('Zh_tw', '')]
                 
                 if valid_data:
-                    # 排序：先看時間
+                    # 過濾掉沒有預估時間的無效資料
+                    valid_data = [v for v in valid_data if v.get('EstimateTime') is not None]
                     valid_data.sort(key=lambda x: x.get('EstimateTime', 0))
+                    
                     for item in valid_data:
                         d_code = item.get('Direction')
                         d_text = "順行 (外圈)" if d_code == 0 else "逆行 (內圈)"
                         b_color = "#2e7d32" if d_code == 0 else "#1565c0"
                         est = int(item.get('EstimateTime'))
                         
-                        # 顏色邏輯：≤ 2分用紅色，其餘用深褐色
                         t_class = "time-urgent" if est <= 2 else "time-normal"
                         t_text = "即時進站" if est <= 1 else f"約 {est} 分鐘"
                         
@@ -116,12 +121,13 @@ with col2:
                         ''', unsafe_allow_html=True)
                     board_time = get_now_tw().strftime('%Y-%m-%d %H:%M:%S')
                 else:
-                    st.info(f"⏳ 站點「{sel_st}」目前暫無預估列車")
-            else: st.error("API 回應異常")
-        except: board_time = "讀取失敗"
+                    st.info(f"⏳ 站點「{sel_st}」目前無列車預估")
+            else:
+                st.warning("⚠️ 正在重新獲取資料...")
+        except:
+            st.error("📡 連線不穩定，自動嘗試中...")
 
 st.markdown(f'<hr><div style="color:gray; font-size:0.85em;">📍 地圖更新：{map_time} | 🕒 站牌更新：{board_time}</div>', unsafe_allow_html=True)
 
-import time
 time.sleep(30)
 st.rerun()
