@@ -63,7 +63,9 @@ def get_token():
 st.markdown('<div class="mochiy-font main-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
 
 # 1. 藍色系統提示
-st.markdown('<div class="info-box">💡 <b>系統提示：</b> 已找回圖例提示，並優化雙向進站資訊顯示。</div>', unsafe_allow_html=True)
+st.markdown('<div class="info-box">💡 <b>最後優化時間及進度：</b> 更改字體及比例 修復站牌顯示問題。</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="info-box">💡 <b>建議使用淺色模式：</b> 。</div>', unsafe_allow_html=True)
 
 # 2. 圖例提示 (回歸點)
 st.markdown('''
