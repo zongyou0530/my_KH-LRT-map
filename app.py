@@ -5,7 +5,7 @@ from streamlit_folium import folium_static
 import datetime
 import math
 
-# 1. 座標微調 (回歸標準座標，由 CSS 處理偏移)
+# 1. 車站座標
 ALL_STATIONS = {
     "籬仔內": [22.5978, 120.3236], "凱旋瑞田": [22.5970, 120.3162], "前鎮之星": [22.5986, 120.3094],
     "凱旋中華": [22.6006, 120.3023], "夢時代": [22.5961, 120.3045], "經貿園區": [22.6015, 120.3012],
@@ -27,19 +27,38 @@ CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "愛河之心", "夢時代", "�
 
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# 2. 字體與 CSS 校正
-st.markdown('<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet"><style>html,body,[data-testid="stAppViewContainer"],p,span,div,label,.stMarkdown{font-family:"Zen Maru Gothic",sans-serif!important;}h1{font-family:"Dela Gothic One",cursive!important;font-weight:400!important;color:"#1e1e1e"}.leaflet-container{font-family:"Zen Maru Gothic",sans-serif!important}</style>', unsafe_allow_html=True)
+# 2. 字體 CSS (這次加上了對地圖標籤的強制對齊設定)
+st.markdown('''
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+    html,body,[data-testid="stAppViewContainer"],p,span,div,label,.stMarkdown{font-family:"Zen Maru Gothic",sans-serif!important;}
+    h1{font-family:"Dela Gothic One",cursive!important;font-weight:400!important;color:"#1e1e1e"}
+    
+    /* 核心修正：強制讓地圖標籤的容器不要有寬高，並讓內容置中 */
+    .station-label {
+        position: absolute;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 0;
+        height: 0;
+    }
+    .station-text {
+        font-family: 'Zen Maru Gothic', sans-serif;
+        font-size: 16pt;
+        color: #1b5e20;
+        font-weight: 700;
+        white-space: nowrap;
+        text-shadow: 2px 2px 3px white;
+        transform: translate(0, -25px); /* 將字體往正上方推 25 像素，避開車站圖示 */
+    }
+</style>
+''', unsafe_allow_html=True)
 
 st.title("🚂 高雄輕軌即時位置監測")
+st.success("📢 系統提示：已校準全線座標。 (✅ 目前版本：絕對中心校正版)")
 
-# 3. 綠色提示框包含版本資訊
-st.success("📢 系統提示：已完成像素級對齊校正。(✅ 目前版本：Dela標題+精準對齊版)")
-
-st.info("💡 圖例：🔴 順行 (外圈) | 🔵 逆行 (內圈)")
-
-selected_station = st.sidebar.selectbox("快速切換至站點：", ["顯示全圖"] + list(ALL_STATIONS.keys()))
-
-# --- 核心邏輯 ---
+# --- 核心邏輯 (TDX API) ---
 def get_nearest_station(lat, lon):
     min_dist = float('inf')
     nearest_name = "路段中"
@@ -64,29 +83,20 @@ def get_data(token):
     res = requests.get(api_url, headers=headers)
     return res.json().get('LivePositions', [])
 
-# --- 地圖渲染 ---
+# --- 地圖生成 ---
 map_loc = [22.6280, 120.3014] if selected_station == "顯示全圖" else ALL_STATIONS[selected_station]
 zoom_lv = 13 if selected_station == "顯示全圖" else 16
 m = folium.Map(location=map_loc, zoom_start=zoom_lv)
 
-# 顯示綠色站名，加上 transform 校正偏移
+# 顯示綠色站名：使用絕對中心校正
 for name, coords in ALL_STATIONS.items():
     if name in CORE_DISPLAY:
         folium.Marker(
             location=coords,
             icon=folium.DivIcon(
-                html=f'''
-                <div style="
-                    font-family: 'Zen Maru Gothic'; 
-                    font-size: 15pt; 
-                    color: #1b5e20; 
-                    white-space: nowrap; 
-                    text-shadow: 2px 2px 3px white; 
-                    font-weight: 700;
-                    transform: translate(-50%, -120%);
-                    text-align: center;
-                ">{name}</div>
-                '''
+                icon_size=(0, 0), # 強制標籤容器尺寸為 0
+                icon_anchor=(0, 0), # 強制錨點在座標點上
+                html=f'<div class="station-label"><div class="station-text">{name}</div></div>'
             )
         ).add_to(m)
 
