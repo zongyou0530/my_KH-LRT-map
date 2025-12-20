@@ -17,78 +17,64 @@ except Exception:
     st.error("❌ 找不到金鑰設定，請確認 Streamlit 雲端後台的 Secrets 已填寫。")
     st.stop()
 
-# 3. 定義抓取 Token 的函數
+# 3. 取得 Token
 def get_token():
     auth_url = 'https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token'
-    data = {
-        'grant_type': 'client_credentials', 
-        'client_id': CLIENT_ID, 
-        'client_secret': CLIENT_SECRET
-    }
+    data = {'grant_type': 'client_credentials', 'client_id': CLIENT_ID, 'client_secret': CLIENT_SECRET}
     res = requests.post(auth_url, data=data)
     return res.json().get('access_token')
 
-# 4. 定義抓取資料的函數 (具備自動備援機制)
+# 4. 取得資料 (針對你測試成功的格式優化)
 def get_data(token):
-    # 優先嘗試：高雄市路徑
-    urls = [
-        'https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/City/Kaohsiung?$top=50&$format=JSON',
-        'https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$top=50&$format=JSON'
-    ]
-    
+    api_url = 'https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$top=30&$format=JSON'
     headers = {'Authorization': f'Bearer {token}'}
-    
-    for url in urls:
-        try:
-            res = requests.get(url, headers=headers)
-            if res.status_code == 200:
-                data = res.json()
-                # 偵測回傳格式是直接列表還是藏在 LivePositions 裡
-                positions = data if isinstance(data, list) else data.get('LivePositions', [])
-                if positions: # 如果這個路徑抓得到車，就直接回傳
-                    return positions
-        except Exception:
-            continue
-    return [] # 全部都抓不到才回傳空列表
+    try:
+        res = requests.get(api_url, headers=headers)
+        data = res.json()
+        # 根據你測試截圖的結果，資料是在 LivePositions 裡面
+        if isinstance(data, dict):
+            return data.get('LivePositions', [])
+        return data if isinstance(data, list) else []
+    except:
+        return []
 
-# 5. 主程式執行
+# 5. 執行程序
 try:
     token = get_token()
     positions = get_data(token)
-except Exception as e:
-    st.error(f"連線發生錯誤: {e}")
+except:
     positions = []
 
-# 6. 建立地圖
-# 高雄中心座標
+# 6. 繪製地圖
 m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
 train_count = 0
 
-# 繪製列車標記
 for train in positions:
-    lat = train.get('PositionLat')
-    lon = train.get('PositionLon')
+    # 針對你截圖中的 TrainPosition 結構進行讀取
+    pos = train.get('TrainPosition', {})
+    lat = pos.get('PositionLat')
+    lon = pos.get('PositionLon')
+    
     if lat and lon:
         folium.Marker(
             location=[lat, lon],
-            popup=f"車號: {train.get('TrainNo', '未知')}",
+            popup=f"車號: {train.get('TripID', '未知')}",
             icon=folium.Icon(color='red', icon='train', prefix='fa')
         ).add_to(m)
         train_count += 1
 
-# 7. 智慧警告框
-if train_count == 0:
-    st.warning("⚠️ 目前地圖上無即時列車資訊。請檢查：1. 是否為營運時段(07-22) 2. TDX權限是否開通 3. 系統是否維護中。")
+# 7. 顯示結果
+if train_count > 0:
+    st.success(f"✅ 成功偵測到 {train_count} 台列車！資料獲取正常。")
 else:
-    st.success(f"✅ 目前偵測到 {train_count} 台輕軌列車運行中。")
+    st.warning("⚠️ 目前地圖上無即時列車資訊（API 回傳 Count 為 0）。")
 
-# 顯示地圖
 folium_static(m)
 
-# 8. 顯示台灣時區更新時間
+# 8. 顯示台灣時間
 now = datetime.datetime.now() + datetime.timedelta(hours=8)
 st.write(f"最後更新時間 (台灣): {now.strftime('%H:%M:%S')}")
 
-# 9. 每 30 秒自動重新整理
+# 9. 每 30 秒自動重整
 time.sleep(30)
 st.rerun()
