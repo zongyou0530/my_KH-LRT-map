@@ -5,7 +5,7 @@ from streamlit_folium import folium_static
 import datetime
 import math
 
-# 1. 車站座標
+# 1. 座標定義
 ALL_STATIONS = {
     "籬仔內": [22.5978, 120.3236], "凱旋瑞田": [22.5970, 120.3162], "前鎮之星": [22.5986, 120.3094],
     "凱旋中華": [22.6006, 120.3023], "夢時代": [22.5961, 120.3045], "經貿園區": [22.6015, 120.3012],
@@ -27,22 +27,12 @@ CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "愛河之心", "夢時代", "�
 
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# 2. 字體 CSS (這次加上了對地圖標籤的強制對齊設定)
+# 2. CSS 與字體設定
 st.markdown('''
 <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
 <style>
     html,body,[data-testid="stAppViewContainer"],p,span,div,label,.stMarkdown{font-family:"Zen Maru Gothic",sans-serif!important;}
     h1{font-family:"Dela Gothic One",cursive!important;font-weight:400!important;color:"#1e1e1e"}
-    
-    /* 核心修正：強制讓地圖標籤的容器不要有寬高，並讓內容置中 */
-    .station-label {
-        position: absolute;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 0;
-        height: 0;
-    }
     .station-text {
         font-family: 'Zen Maru Gothic', sans-serif;
         font-size: 16pt;
@@ -50,15 +40,19 @@ st.markdown('''
         font-weight: 700;
         white-space: nowrap;
         text-shadow: 2px 2px 3px white;
-        transform: translate(0, -25px); /* 將字體往正上方推 25 像素，避開車站圖示 */
     }
 </style>
 ''', unsafe_allow_html=True)
 
 st.title("🚂 高雄輕軌即時位置監測")
-st.success("📢 系統提示：已校準全線座標。 (✅ 目前版本：絕對中心校正版)")
 
-# --- 核心邏輯 (TDX API) ---
+# 這一行就是剛才漏掉導致紅字的關鍵定義！
+selected_station = st.sidebar.selectbox("快速切換至站點：", ["顯示全圖"] + list(ALL_STATIONS.keys()))
+
+st.success(f"📢 系統提示：紅字已修復。 (✅ 目前版本：絕對定位救援版)")
+st.info("💡 圖例：🔴 順行 (外圈) | 🔵 逆行 (內圈)")
+
+# --- 核心邏輯 ---
 def get_nearest_station(lat, lon):
     min_dist = float('inf')
     nearest_name = "路段中"
@@ -88,15 +82,15 @@ map_loc = [22.6280, 120.3014] if selected_station == "顯示全圖" else ALL_STA
 zoom_lv = 13 if selected_station == "顯示全圖" else 16
 m = folium.Map(location=map_loc, zoom_start=zoom_lv)
 
-# 顯示綠色站名：使用絕對中心校正
+# 綠色站名對齊：使用 center 錨點防止放大偏移
 for name, coords in ALL_STATIONS.items():
     if name in CORE_DISPLAY:
         folium.Marker(
             location=coords,
             icon=folium.DivIcon(
-                icon_size=(0, 0), # 強制標籤容器尺寸為 0
-                icon_anchor=(0, 0), # 強制錨點在座標點上
-                html=f'<div class="station-label"><div class="station-text">{name}</div></div>'
+                icon_size=(150,30),
+                icon_anchor=(75, 40), # 這是核心微調：75是寬度的一半(置中)，40是高度讓它浮在標誌上方
+                html=f'<div style="text-align:center;"><span class="station-text">{name}</span></div>'
             )
         ).add_to(m)
 
