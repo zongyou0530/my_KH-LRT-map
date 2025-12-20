@@ -5,7 +5,7 @@ from streamlit_folium import folium_static
 import datetime
 import math
 
-# 1. 終極校準座標 (微調 lat/lon 以對齊底圖文字)
+# 1. 精準座標校準
 ALL_STATIONS = {
     "籬仔內": [22.5978, 120.3236], "凱旋瑞田": [22.5969, 120.3168], "前鎮之星": [22.5986, 120.3094],
     "凱旋中華": [22.6006, 120.3023], "夢時代": [22.5961, 120.3045], "經貿園區": [22.6015, 120.3012],
@@ -15,7 +15,7 @@ ALL_STATIONS = {
     "文武聖殿": [22.6300, 120.2790], "鼓山區公所": [22.6373, 120.2797], 
     "鼓山": [22.6415, 120.2830], 
     "馬卡道": [22.6493, 120.2858], 
-    "台鐵美術館": [22.6533, 120.2864], # 再次細微調校
+    "台鐵美術館": [22.6533, 120.2864], 
     "內惟藝術中心": [22.6575, 120.2884],
     "美術館東": [22.6582, 120.2931], "聯合醫院": [22.6579, 120.2965], "龍華國小": [22.6571, 120.2996],
     "愛河之心": [22.6565, 120.3028], "新上國小": [22.6562, 120.3075], "灣仔內": [22.6558, 120.3150],
@@ -27,47 +27,38 @@ ALL_STATIONS = {
 
 CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "駁二蓬萊", "旅運中心", "夢時代", "愛河之心"]
 
-st.set_page_config(page_title="高雄輕軌即時監測", layout="wide")
+st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# 2. 字體設定：標題 Dela Gothic One，內文與對話框 Kiwi Maru (不加粗)
+# 2. 字體與樣式設定 (修正多餘文字問題)
 st.markdown("""
-    <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Kiwi+Maru:wght@300;400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Kiwi+Maru:wght@400&display=swap" rel="stylesheet">
     <style>
-    /* 標題專用：Dela Gothic One */
+    /* 這裡面的註解必須用斜線星號，才不會顯示在畫面上 */
     h1 {
         font-family: 'Dela Gothic One', cursive !important;
         font-weight: 400 !important;
     }
     
-    /* 全域內文與對話框：Kiwi Maru (移除強制加粗) */
     * {
         font-family: 'Kiwi Maru', serif !important;
         font-weight: 400 !important;
     }
     
-    /* 側邊欄與資訊框字體 */
-    .stSelectbox label, .stAlert p, .stMarkdown p {
-        font-family: 'Kiwi Maru', serif !important;
-    }
-
-    /* 地圖內標籤字體：Kiwi Maru */
     .leaflet-div-icon div {
         font-family: 'Kiwi Maru', serif !important;
-        font-weight: 500 !important; /* 站名標籤稍微清楚一點，但不使用 bold */
     }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🚂 高雄輕軌即時位置監測")
 
-# 移除不必要的測試文字，保留簡潔提示
+# 移除冗餘測試文字，只留精簡提示
 st.info("💡 圖例：🔴 順行 (外圈) | 🔵 逆行 (內圈)")
-st.success("✅ 站點座標已重新校準，對齊底圖文字。")
 
 # 側邊欄
 selected_station = st.sidebar.selectbox("快速切換至站點：", ["顯示全圖"] + list(ALL_STATIONS.keys()))
 
-# 邏輯函數
+# API 邏輯 (省略重複說明)
 def get_nearest_station(lat, lon):
     min_dist = float('inf')
     nearest_name = "路段中"
@@ -92,12 +83,11 @@ def get_data(token):
     res = requests.get(api_url, headers=headers)
     return res.json().get('LivePositions', [])
 
-# 地圖初始化
+# 地圖渲染
 map_loc = [22.6280, 120.3014] if selected_station == "顯示全圖" else ALL_STATIONS[selected_station]
 zoom_lv = 13 if selected_station == "顯示全圖" else 16
 m = folium.Map(location=map_loc, zoom_start=zoom_lv)
 
-# 繪製站名標籤 (綠色文字)
 for name, coords in ALL_STATIONS.items():
     if name in CORE_DISPLAY:
         folium.Marker(
@@ -107,7 +97,6 @@ for name, coords in ALL_STATIONS.items():
             )
         ).add_to(m)
 
-# 列車處理
 try:
     token = get_token()
     positions = get_data(token)
@@ -122,9 +111,9 @@ try:
             current_nearest = get_nearest_station(lat, lon)
             
             popup_html = f"""
-            <div style="width: 150px; line-height: 1.6; font-size: 11pt;">
+            <div style="width: 150px; line-height: 1.6;">
                 站牌：{current_nearest}<br>
-                方向：{"順行 (外圈)" if direction==0 else "逆行 (內圈)"}<br>
+                方向：{"順行" if direction==0 else "逆行"}<br>
                 更新：{now_str}
             </div>
             """
@@ -139,7 +128,6 @@ except:
 folium_static(m)
 st.write(f"最後更新時間: {now_str}")
 
-# 自動刷新
 import time
 time.sleep(30)
 st.rerun()
