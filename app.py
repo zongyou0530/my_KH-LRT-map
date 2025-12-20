@@ -29,11 +29,10 @@ CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "駁二蓬萊", "旅運中心", 
 
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# 2. 字體與樣式設定 (修正多餘文字問題)
+# 2. 字體載入與樣式修正 (徹底移除導致顯示錯誤的註解)
 st.markdown("""
-    <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Kiwi+Maru:wght@400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Kiwi+Maru:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-    /* 這裡面的註解必須用斜線星號，才不會顯示在畫面上 */
     h1 {
         font-family: 'Dela Gothic One', cursive !important;
         font-weight: 400 !important;
@@ -44,21 +43,25 @@ st.markdown("""
         font-weight: 400 !important;
     }
     
+    .stSelectbox label, .stAlert p, .stMarkdown p, .stText {
+        font-family: 'Kiwi Maru', serif !important;
+    }
+
     .leaflet-div-icon div {
         font-family: 'Kiwi Maru', serif !important;
+        font-weight: 500 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🚂 高雄輕軌即時位置監測")
 
-# 移除冗餘測試文字，只留精簡提示
+# 清爽版提示框
 st.info("💡 圖例：🔴 順行 (外圈) | 🔵 逆行 (內圈)")
+st.success("✅ 站點座標與 Kiwi Maru 字體已更新。")
 
-# 側邊欄
 selected_station = st.sidebar.selectbox("快速切換至站點：", ["顯示全圖"] + list(ALL_STATIONS.keys()))
 
-# API 邏輯 (省略重複說明)
 def get_nearest_station(lat, lon):
     min_dist = float('inf')
     nearest_name = "路段中"
@@ -83,7 +86,6 @@ def get_data(token):
     res = requests.get(api_url, headers=headers)
     return res.json().get('LivePositions', [])
 
-# 地圖渲染
 map_loc = [22.6280, 120.3014] if selected_station == "顯示全圖" else ALL_STATIONS[selected_station]
 zoom_lv = 13 if selected_station == "顯示全圖" else 16
 m = folium.Map(location=map_loc, zoom_start=zoom_lv)
@@ -111,7 +113,7 @@ try:
             current_nearest = get_nearest_station(lat, lon)
             
             popup_html = f"""
-            <div style="width: 150px; line-height: 1.6;">
+            <div style="width: 150px; line-height: 1.6; font-size: 11pt;">
                 站牌：{current_nearest}<br>
                 方向：{"順行" if direction==0 else "逆行"}<br>
                 更新：{now_str}
