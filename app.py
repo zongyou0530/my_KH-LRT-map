@@ -19,29 +19,32 @@ st.markdown('''
     /* 藍色留言板 */
     .info-box { 
         background-color: #e3f2fd; border: 1px solid #90caf9; 
-        padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; color: #0d47a1; font-size: 0.9em;
+        padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; color: #0d47a1; font-size: 0.85em;
     }
     /* 圖例說明 */
     .legend-box { 
         background-color: #f9f9f9; border: 1px solid #ddd; 
-        padding: 5px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.85em;
+        padding: 5px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.8em;
     }
     /* 小巧的綠背景標題 */
     .time-header {
-        background-color: #2e7d32; color: white; padding: 3px 10px;
-        border-radius: 4px; font-size: 0.85em; display: inline-block; margin-bottom: 5px;
+        background-color: #2e7d32; color: white; padding: 2px 8px;
+        border-radius: 4px; font-size: 0.75em; display: inline-block; margin-bottom: 3px;
     }
-    /* 精緻卡片樣式 */
+    /* 極致精緻小卡片 */
     .arrival-card { 
-        background-color: #ffffff; border-radius: 8px; padding: 10px 15px; 
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 8px;
-        border-left: 6px solid #2e7d32; line-height: 1.2;
+        background-color: #ffffff; border-radius: 8px; padding: 8px 12px; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 6px;
+        border-left: 5px solid #2e7d32; line-height: 1.1;
     }
-    .time-normal { font-size: 1.3em; color: #4D0000; margin: 0; }
-    .time-urgent { font-size: 1.3em; color: #FF0000; margin: 0; }
+    .time-normal { font-size: 1.2em; color: #4D0000; margin: 0; font-weight: bold; }
+    .time-urgent { font-size: 1.2em; color: #FF0000; margin: 0; font-weight: bold; }
     
-    /* 修正選單不跳鍵盤 */
-    [data-baseweb="select"] input { readonly: true !important; }
+    /* 更新時間字體 */
+    .update-time { font-size: 0.75em; color: #666; margin-top: 2px; }
+
+    /* 鎖死手機鍵盤：將下拉選單設為唯讀 */
+    div[data-baseweb="select"] input { readonly: true !important; caret-color: transparent !important; }
 </style>
 ''', unsafe_allow_html=True)
 
@@ -65,11 +68,15 @@ def get_token():
         return res.json().get('access_token')
     except: return None
 
+# 取得現在時間 (台北)
+tz = pytz.timezone('Asia/Taipei')
+now_str = datetime.datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+
 # --- UI 開始 ---
-st.markdown('<div class="mochiy-font" style="font-size:36px;">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
+st.markdown('<div class="mochiy-font" style="font-size:32px;">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
 
 # 1. 藍色留言板
-st.markdown('<div class="info-box">💡 系統提示：暫時無法解決順行逆行顯示問題 請自己通靈 反正有一個是對的（50%的機率🤣）。</div>', unsafe_allow_html=True)
+st.markdown('<div class="info-box">💡 系統提示：已修復更新時間顯示，並進一步精簡卡片體積。</div>', unsafe_allow_html=True)
 
 # 2. 圖例說明
 st.markdown('<div class="legend-box">📍 <b>地圖標示：</b> <span style="color:green;">● 順行</span> | <span style="color:blue;">● 逆行</span></div>', unsafe_allow_html=True)
@@ -86,18 +93,13 @@ with col1:
                 d_color = 'green' if t.get('Direction') == 0 else 'blue'
                 folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], icon=folium.Icon(color=d_color, icon='train', prefix='fa')).add_to(m)
         except: pass
-    folium_static(m, height=500, width=950)
+    folium_static(m, height=480, width=950)
 
 with col2:
-    st.markdown('<div class="mochiy-font" style="font-size:20px; margin-bottom:10px;">🚉 車站即時時刻表</div>', unsafe_allow_html=True)
+    st.markdown('<div class="mochiy-font" style="font-size:18px; margin-bottom:5px;">🚉 選擇車站</div>', unsafe_allow_html=True)
     
-    # 這裡使用單選按鈕(Radio)或是強制不跳鍵盤的 Selectbox
-    sel_st_label = st.selectbox(
-        "請選擇：", 
-        list(STATION_MAP.keys()), 
-        index=19, 
-        label_visibility="collapsed"
-    )
+    # 鎖定選單不彈鍵盤
+    sel_st_label = st.selectbox("車站選單", list(STATION_MAP.keys()), index=19, label_visibility="collapsed")
     target_id = STATION_MAP[sel_st_label]
 
     if token:
@@ -121,6 +123,12 @@ with col2:
                     ''', unsafe_allow_html=True)
             else:
                 st.write("⌛ 暫無列車資訊")
+                
+            # --- 顯示更新時間 (回歸！) ---
+            st.markdown('<hr style="margin: 10px 0;">', unsafe_allow_html=True)
+            st.markdown(f'<div class="update-time">📍 地圖更新時間：{now_str}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="update-time">🕒 站牌更新時間：{now_str}</div>', unsafe_allow_html=True)
+            
         except: st.error("📡 資料更新中")
 
 time.sleep(30)
