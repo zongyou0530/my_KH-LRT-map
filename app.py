@@ -5,7 +5,7 @@ from streamlit_folium import folium_static
 import datetime
 import math
 
-# 1. 座標校準
+# 1. 精準座標
 ALL_STATIONS = {
     "籬仔內": [22.5978, 120.3236], "凱旋瑞田": [22.5969, 120.3168], "前鎮之星": [22.5986, 120.3094],
     "凱旋中華": [22.6006, 120.3023], "夢時代": [22.5961, 120.3045], "經貿園區": [22.6015, 120.3012],
@@ -29,27 +29,29 @@ CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "駁二蓬萊", "旅運中心", 
 
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# 2. 強效注入字體 (確保不外流文字)
+# 2. 徹底解決代碼外流與換圓體 (Zen Maru Gothic)
 st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Kiwi+Maru:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@400;500&display=swap" rel="stylesheet">
 <style>
-    html, body, [data-testid="stAppViewContainer"], .stMarkdown, p, span, li, div {
-        font-family: 'Kiwi Maru', serif !important;
-        font-weight: 400 !important;
-    }
+    /* 強制標題 */
     h1 {
         font-family: 'Dela Gothic One', cursive !important;
+    }
+    /* 全域內文強制換圓體 */
+    html, body, [data-testid="stAppViewContainer"], .stMarkdown, p, span, div, label {
+        font-family: 'Zen Maru Gothic', sans-serif !important;
         font-weight: 400 !important;
     }
-    .leaflet-container {
-        font-family: 'Kiwi Maru', serif !important;
+    /* 地圖內站名標籤 */
+    .leaflet-div-icon div {
+        font-family: 'Zen Maru Gothic', sans-serif !important;
+        font-weight: 500 !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 st.title("🚂 高雄輕軌即時位置監測")
 
-# 移除測試文字
 st.info("💡 圖例：🔴 順行 (外圈) | 🔵 逆行 (內圈)")
 
 selected_station = st.sidebar.selectbox("快速切換至站點：", ["顯示全圖"] + list(ALL_STATIONS.keys()))
