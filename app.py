@@ -5,7 +5,7 @@ from streamlit_folium import folium_static
 import datetime
 import pytz
 
-# 1. 頁面配置與雙字體注入
+# 1. 頁面配置與字體注入
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
 st.markdown('''
@@ -15,23 +15,24 @@ st.markdown('''
     .mochiy-font {
         font-family: 'Mochiy Pop P One', sans-serif !important;
         font-weight: normal !important;
-        color: #39bd91;
+        color: #2e7d32;
     }
     .main-title { font-size: 52px; margin-bottom: 25px; }
     .side-title { font-size: 26px; margin-bottom: 15px; display: block; }
     
-    /* 內文：Kiwi Maru */
+    /* 內文：Kiwi Maru (不加粗) */
     html, body, [data-testid="stAppViewContainer"], .stMarkdown, p, div, span, label, .stSelectbox {
         font-family: 'Kiwi Maru', serif !important;
+        font-weight: normal !important;
     }
 
-    /* 藍色對話框樣式 */
+    /* 藍色對話框 */
     .info-box { background-color: #e3f2fd; border: 1px solid #90caf9; padding: 15px; border-radius: 10px; margin-bottom: 10px; color: #0d47a1; }
     
-    /* 圖標圖例樣式 (回歸) */
+    /* 圖例說明 */
     .legend-box { background-color: #f5f5f5; border: 1px solid #ddd; padding: 10px 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.95em; }
-    .dot-green { color: #2e7d32; font-weight: bold; }
-    .dot-blue { color: #1565c0; font-weight: bold; }
+    .dot-green { color: #2e7d32; }
+    .dot-blue { color: #1565c0; }
 
     /* 站牌卡片 */
     .arrival-card { 
@@ -42,7 +43,9 @@ st.markdown('''
         display: inline-block; padding: 3px 10px; border-radius: 5px; 
         font-size: 0.85em; margin-bottom: 8px; color: white;
     }
-    .status-text { font-size: 1.6em; font-weight: bold; color: #d32f2f; }
+    /* 抵達時間樣式：預設深褐色，不加粗 */
+    .time-normal { font-size: 1.6em; color: #4D0000; font-weight: normal; }
+    .time-urgent { font-size: 1.6em; color: #FF0000; font-weight: normal; }
 </style>
 ''', unsafe_allow_html=True)
 
@@ -62,18 +65,13 @@ def get_token():
 # --- UI 開始 ---
 st.markdown('<div class="mochiy-font main-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
 
-# 1. 藍色系統提示
-st.markdown('<div class="info-box">💡 <b>最後優化時間及進度：</b> 更改字體及比例 修復站牌顯示問題。</div>', unsafe_allow_html=True)
+st.markdown('<div class="info-box">💡 <b>系統提示：</b> 已優化雙向資料抓取，並依時間區分文字顏色（#FF0000 為即將抵達）。</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="info-box">💡 <b>建議使用淺色模式：</b> 。</div>', unsafe_allow_html=True)
-
-# 2. 圖例提示 (回歸點)
 st.markdown('''
 <div class="legend-box">
     📍 <b>圖例說明：</b> 
     <span class="dot-green">● 順行 (外圈)</span> | 
-    <span class="dot-blue">● 逆行 (內圈)</span> | 
-    🖱️ 點擊列車圖標可查看即時更新時間
+    <span class="dot-blue">● 逆行 (內圈)</span> | 🖱️ 點擊地圖圖標查看詳細資訊
 </div>
 ''', unsafe_allow_html=True)
 
@@ -102,7 +100,7 @@ with col1:
         except: map_time = "地圖資料獲取失敗"
     folium_static(m, height=600, width=1000)
 
-# --- 右側：站牌 ---
+# --- 右側：站牌 (強化雙向抓取與顏色階層) ---
 with col2:
     st.markdown('<span class="mochiy-font side-title">📊 站牌即時資訊</span>', unsafe_allow_html=True)
     sel_st = st.selectbox("選擇查詢車站：", LRT_STATIONS)
@@ -114,22 +112,30 @@ with col2:
             
             if resp.status_code == 200:
                 all_data = resp.json()
+                # 模糊匹配站名，確保「美術館」能抓到所有方向
                 search_key = "美術館" if "美術館" in sel_st else sel_st
                 valid_data = [b for b in all_data if search_key in b.get('StationName', {}).get('Zh_tw', '') and b.get('EstimateTime') is not None]
                 
                 if valid_data:
+                    # 先按時間排序
                     valid_data.sort(key=lambda x: x.get('EstimateTime', 0))
+                    
                     for item in valid_data:
                         dir_code = item.get('Direction')
                         dir_text = "順行 (外圈)" if dir_code == 0 else "逆行 (內圈)"
                         bg_color = "#2e7d32" if dir_code == 0 else "#1565c0"
-                        est = item.get('EstimateTime')
-                        status = "即時進站" if int(est) <= 1 else f"約 {est} 分鐘"
+                        
+                        est_min = int(item.get('EstimateTime'))
+                        # 判斷顏色與狀態文字
+                        if est_min <= 2:
+                            status_html = f'<span class="time-urgent">{"即時進站" if est_min <= 1 else f"約 {est_min} 分鐘"}</span>'
+                        else:
+                            status_html = f'<span class="time-normal">約 {est_min} 分鐘</span>'
                         
                         st.markdown(f'''
                         <div class="arrival-card" style="border-left: 10px solid {bg_color};">
                             <div class="dir-tag" style="background-color:{bg_color};">{dir_text}</div>
-                            <b>狀態：</b><span class="status-text">{status}</span>
+                            <div style="font-size:1.1em; margin-bottom:5px;">狀態：{status_html}</div>
                         </div>
                         ''', unsafe_allow_html=True)
                     board_time = get_now_tw().strftime('%Y-%m-%d %H:%M:%S')
@@ -139,7 +145,7 @@ with col2:
             else: st.error("資料讀取失敗")
         except: board_time = "讀取失敗"
 
-# 底部兩行更新時間
+# 底部更新時間
 st.markdown(f'''
 <hr style="margin-top:30px;">
 <div style="color:gray; font-size:0.85em; line-height:1.8;">
