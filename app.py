@@ -5,50 +5,101 @@ from streamlit_folium import folium_static
 import datetime
 import pytz
 import time
+import base64
+import os
 
-# 1. 頁面配置與精簡化樣式
+# 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-st.markdown('''
-<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+P+One&family=Kiwi+Maru:wght@300;400;500&display=swap" rel="stylesheet">
+# --- 字體轉換邏輯 ---
+def get_base64_font(font_file):
+    with open(font_file, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+font_path = "ZONGYOOOOOOU1.otf"
+font_css = ""
+
+# 檢查字體檔是否存在並準備 CSS
+if os.path.exists(font_path):
+    font_base64 = get_base64_font(font_path)
+    font_css = f'''
+    @font-face {{
+        font-family: 'ZongYouFont';
+        src: url(data:font/otf;base64,{font_base64}) format('opentype');
+    }}
+    .custom-title {{
+        font-family: 'ZongYouFont' !important;
+        font-size: 42px;
+        color: #2e7d32;
+        margin-bottom: 10px;
+    }}
+    .custom-subtitle {{
+        font-family: 'ZongYouFont' !important;
+        font-size: 24px;
+        color: #333;
+        margin-bottom: 10px;
+    }}
+    '''
+else:
+    # 如果沒找到字體，回退到預設樣式
+    font_css = '''
+    .custom-title { font-family: sans-serif; font-size: 42px; color: #2e7d32; }
+    .custom-subtitle { font-family: sans-serif; font-size: 24px; color: #333; }
+    '''
+
+# 2. 注入 CSS 樣式
+st.markdown(f'''
+<link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-    .mochiy-font { font-family: 'Mochiy Pop P One', sans-serif !important; color: #2e7d32; }
-    html, body, [data-testid="stAppViewContainer"], p, div, span, label {
-        font-family: 'Kiwi Maru', serif !important;
-    }
+    {font_css}
+    
+    html, body, [data-testid="stAppViewContainer"], p, div, span, label {{
+        font-family: 'Kiwi Maru', serif;
+    }}
     /* 藍色留言板 */
-    .info-box { 
+    .info-box {{ 
         background-color: #e3f2fd; border: 1px solid #90caf9; 
         padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; color: #0d47a1; font-size: 0.85em;
-    }
+    }}
     /* 圖例說明 */
-    .legend-box { 
+    .legend-box {{ 
         background-color: #f9f9f9; border: 1px solid #ddd; 
         padding: 5px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.8em;
-    }
-    /* 小巧的綠背景標題 */
-    .time-header {
+    }}
+    /* 卡片內的小標頭 (不套用字體，維持清晰度) */
+    .time-header {{
         background-color: #2e7d32; color: white; padding: 2px 8px;
         border-radius: 4px; font-size: 0.75em; display: inline-block; margin-bottom: 3px;
-    }
-    /* 極致精緻小卡片 */
-    .arrival-card { 
+    }}
+    /* 卡片樣式 */
+    .arrival-card {{ 
         background-color: #ffffff; border-radius: 8px; padding: 8px 12px; 
         box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 6px;
         border-left: 5px solid #2e7d32; line-height: 1.1;
     }
-    .time-normal { font-size: 1.2em; color: #4D0000; margin: 0; font-weight: bold; }
-    .time-urgent { font-size: 1.2em; color: #FF0000; margin: 0; font-weight: bold; }
-    
-    /* 更新時間字體 */
-    .update-time { font-size: 0.75em; color: #666; margin-top: 2px; }
+    .time-normal {{ font-size: 1.2em; color: #4D0000; margin: 0; font-weight: bold; }}
+    .time-urgent {{ font-size: 1.2em; color: #FF0000; margin: 0; font-weight: bold; }}
+    .update-time {{ font-size: 0.75em; color: #666; margin-top: 2px; }}
 
-    /* 鎖死手機鍵盤：將下拉選單設為唯讀 */
-    div[data-baseweb="select"] input { readonly: true !important; caret-color: transparent !important; }
+    /* 鎖死手機鍵盤 */
+    div[data-baseweb="select"] input {{ readonly: true !important; caret-color: transparent !important; }}
 </style>
 ''', unsafe_allow_html=True)
 
-# 2. 車站資料
+# 取得現在時間
+tz = pytz.timezone('Asia/Taipei')
+now_str = datetime.datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+
+# --- UI 開始 ---
+
+# 大標題：套用自製字體
+st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="info-box">💡 系統提示：標題已套用 ZONGYOOOOOOU1 自製字體，地圖與資訊每 30 秒自動更新。</div>', unsafe_allow_html=True)
+st.markdown('<div class="legend-box">📍 <b>地圖標示：</b> <span style="color:green;">● 順行</span> | <span style="color:blue;">● 逆行</span></div>', unsafe_allow_html=True)
+
+# 車站對照表
 STATION_MAP = {
     "C1 籬仔內": "C1", "C2 凱旋瑞田": "C2", "C3 前鎮之星": "C3", "C4 凱旋中華": "C4", "C5 夢時代": "C5",
     "C6 經貿園區": "C6", "C7 軟體園區": "C7", "C8 高雄展覽館": "C8", "C9 旅運中心": "C9", "C10 光榮碼頭": "C10",
@@ -68,19 +119,6 @@ def get_token():
         return res.json().get('access_token')
     except: return None
 
-# 取得現在時間 (台北)
-tz = pytz.timezone('Asia/Taipei')
-now_str = datetime.datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
-
-# --- UI 開始 ---
-st.markdown('<div class="mochiy-font" style="font-size:32px;">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
-
-# 1. 藍色留言板
-st.markdown('<div class="info-box">💡 系統提示：已修復更新時間顯示，並進一步精簡卡片體積。</div>', unsafe_allow_html=True)
-
-# 2. 圖例說明
-st.markdown('<div class="legend-box">📍 <b>地圖標示：</b> <span style="color:green;">● 順行</span> | <span style="color:blue;">● 逆行</span></div>', unsafe_allow_html=True)
-
 token = get_token()
 col1, col2 = st.columns([7, 3])
 
@@ -96,9 +134,9 @@ with col1:
     folium_static(m, height=480, width=950)
 
 with col2:
-    st.markdown('<div class="mochiy-font" style="font-size:18px; margin-bottom:5px;">🚉 選擇車站</div>', unsafe_allow_html=True)
+    # 選擇車站標題：套用自製字體
+    st.markdown('<div class="custom-subtitle">🚉 選擇車站</div>', unsafe_allow_html=True)
     
-    # 鎖定選單不彈鍵盤
     sel_st_label = st.selectbox("車站選單", list(STATION_MAP.keys()), index=19, label_visibility="collapsed")
     target_id = STATION_MAP[sel_st_label]
 
@@ -124,7 +162,6 @@ with col2:
             else:
                 st.write("⌛ 暫無列車資訊")
                 
-            # --- 顯示更新時間 (回歸！) ---
             st.markdown('<hr style="margin: 10px 0;">', unsafe_allow_html=True)
             st.markdown(f'<div class="update-time">📍 地圖更新時間：{now_str}</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="update-time">🕒 站牌更新時間：{now_str}</div>', unsafe_allow_html=True)
