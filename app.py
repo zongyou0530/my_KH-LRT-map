@@ -5,7 +5,7 @@ from streamlit_folium import folium_static
 import datetime
 import math
 
-# 1. 精準座標
+# 1. 座標微調校準
 ALL_STATIONS = {
     "籬仔內": [22.5978, 120.3236], "凱旋瑞田": [22.5969, 120.3168], "前鎮之星": [22.5986, 120.3094],
     "凱旋中華": [22.6006, 120.3023], "夢時代": [22.5961, 120.3045], "經貿園區": [22.6015, 120.3012],
@@ -27,25 +27,25 @@ ALL_STATIONS = {
 
 CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "駁二蓬萊", "旅運中心", "夢時代", "愛河之心"]
 
-st.set_page_config(page_title="高雄輕軌監測", layout="wide")
+st.set_page_config(page_title="高雄輕軌即時監測", layout="wide")
 
-# 2. 徹底解決代碼外流與換圓體 (Zen Maru Gothic)
+# 2. 核心樣式修復：強制清除代碼文字並換成圓體 (Zen Maru Gothic)
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@400;500&display=swap" rel="stylesheet">
 <style>
-    /* 強制標題 */
+    /* 強制標題字體 */
     h1 {
         font-family: 'Dela Gothic One', cursive !important;
+        font-weight: normal !important;
     }
-    /* 全域內文強制換圓體 */
-    html, body, [data-testid="stAppViewContainer"], .stMarkdown, p, span, div, label {
+    /* 全域內容強制換成圓體 (不加粗) */
+    html, body, [data-testid="stAppViewContainer"], p, div, span, label {
         font-family: 'Zen Maru Gothic', sans-serif !important;
         font-weight: 400 !important;
     }
-    /* 地圖內站名標籤 */
-    .leaflet-div-icon div {
+    /* 側邊欄專屬字體 */
+    [data-testid="stSidebar"] * {
         font-family: 'Zen Maru Gothic', sans-serif !important;
-        font-weight: 500 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -89,7 +89,7 @@ for name, coords in ALL_STATIONS.items():
         folium.Marker(
             location=coords,
             icon=folium.DivIcon(
-                html=f'<div style="font-size: 15pt; color: #1b5e20; white-space: nowrap; text-shadow: 1px 1px 2px white;">{name}</div>'
+                html=f'<div style="font-family: \'Zen Maru Gothic\', sans-serif; font-size: 15pt; color: #1b5e20; white-space: nowrap; text-shadow: 1px 1px 2px white;">{name}</div>'
             )
         ).add_to(m)
 
@@ -107,10 +107,10 @@ try:
             current_nearest = get_nearest_station(lat, lon)
             
             popup_html = f"""
-            <div style="width: 140px; line-height: 1.5; font-size: 11pt;">
-                站牌：{current_nearest}<br>
-                方向：{"順行" if direction==0 else "逆行"}<br>
-                更新：{now_str}
+            <div style="font-family: 'Zen Maru Gothic', sans-serif; width: 140px; line-height: 1.5;">
+                <b>站牌：</b>{current_nearest}<br>
+                <b>方向：</b>{"順行" if direction==0 else "逆行"}<br>
+                <b>更新：</b>{now_str}
             </div>
             """
             folium.Marker(
