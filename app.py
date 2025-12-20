@@ -5,7 +5,7 @@ from streamlit_folium import folium_static
 import datetime
 import math
 
-# 1. 座標微調校準 (針對 OSM 底圖文字對齊)
+# 1. 座標微調 (對齊底圖文字)
 ALL_STATIONS = {
     "籬仔內": [22.5978, 120.3236], "凱旋瑞田": [22.5969, 120.3168], "前鎮之星": [22.5986, 120.3094],
     "凱旋中華": [22.6006, 120.3023], "夢時代": [22.5961, 120.3045], "經貿園區": [22.6015, 120.3012],
@@ -25,13 +25,13 @@ ALL_STATIONS = {
 
 CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "駁二蓬萊", "旅運中心", "夢時代", "愛河之心"]
 
-st.set_page_config(page_title="高雄輕軌即時監測", layout="wide")
+st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# 2. 終極解決：將 CSS 壓縮並避開星號，解決頂部文字與字體問題
-# 使用 Zen Maru Gothic 圓體
-st.markdown('<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet"><style>html,body,[data-testid="stAppViewContainer"],.stMarkdown,p,span,div,label{font-family:"Zen Maru Gothic",sans-serif!important;font-weight:400!important}h1{font-family:"Dela Gothic One",cursive!important;font-weight:400!important}.leaflet-container{font-family:"Zen Maru Gothic",sans-serif!important}</style>', unsafe_allow_html=True)
+# 2. 強制換圓體 + 清除上方雜訊 (壓縮成一行)
+st.markdown('<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet"><style>html,body,[data-testid="stAppViewContainer"],.stMarkdown,p,span,div,label{font-family:"Zen Maru Gothic",sans-serif!important;}h1{font-family:"Zen Maru Gothic",sans-serif!important;font-weight:700!important;}</style>', unsafe_allow_html=True)
 
-st.title("🚂 高雄輕軌即時位置監測")
+st.title("🚂 高雄輕軌即時監測")
+st.caption("版本：V5-Final (圓體字型已套用)") # 這是檢查點
 
 st.info("💡 圖例：🔴 順行 (外圈) | 🔵 逆行 (內圈)")
 
@@ -65,13 +65,12 @@ map_loc = [22.6280, 120.3014] if selected_station == "顯示全圖" else ALL_STA
 zoom_lv = 13 if selected_station == "顯示全圖" else 16
 m = folium.Map(location=map_loc, zoom_start=zoom_lv)
 
-# 渲染校準後的站名
 for name, coords in ALL_STATIONS.items():
     if name in CORE_DISPLAY:
         folium.Marker(
             location=coords,
             icon=folium.DivIcon(
-                html=f'<div style="font-family: \'Zen Maru Gothic\', sans-serif; font-size: 15pt; color: #1b5e20; white-space: nowrap; text-shadow: 2px 2px 3px white; font-weight: 700;">{name}</div>'
+                html=f'<div style="font-family: \'Zen Maru Gothic\'; font-size: 15pt; color: #1b5e20; white-space: nowrap; text-shadow: 2px 2px 3px white; font-weight: 700;">{name}</div>'
             )
         ).add_to(m)
 
@@ -79,31 +78,18 @@ try:
     token = get_token()
     positions = get_data(token)
     now_str = (datetime.datetime.now() + datetime.timedelta(hours=8)).strftime('%H:%M:%S')
-
     for train in positions:
         pos = train.get('TrainPosition', {})
         lat, lon = pos.get('PositionLat'), pos.get('PositionLon')
         if lat and lon:
             direction = train.get('Direction', 0)
-            train_color = 'red' if direction == 0 else 'blue'
             current_nearest = get_nearest_station(lat, lon)
-            
-            popup_html = f"""
-            <div style="font-family: 'Zen Maru Gothic', sans-serif; width: 150px; line-height: 1.6;">
-                <b style='color:#2e7d32;'>站牌：</b>{current_nearest}<br>
-                <b>方向：</b>{"順行 (外圈)" if direction==0 else "逆行 (內圈)"}<br>
-                <b>更新：</b>{now_str}
-            </div>
-            """
-            folium.Marker(
-                location=[lat, lon],
-                popup=folium.Popup(popup_html, max_width=250),
-                icon=folium.Icon(color=train_color, icon='train', prefix='fa')
-            ).add_to(m)
-except:
-    pass
+            popup_html = f"<div style='font-family:Zen Maru Gothic;'>站牌：{current_nearest}<br>更新：{now_str}</div>"
+            folium.Marker(location=[lat, lon], popup=folium.Popup(popup_html, max_width=200),
+                icon=folium.Icon(color='red' if direction==0 else 'blue', icon='train', prefix='fa')).add_to(m)
+except: pass
 
-folium_static(m, width=None)
+folium_static(m)
 st.write(f"最後更新時間: {now_str}")
 
 import time
