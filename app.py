@@ -5,8 +5,8 @@ from streamlit_folium import folium_static
 import datetime
 import pytz
 
-# 1. 初始化與風格
-st.set_page_config(page_title="高雄輕軌監測 V3.8", layout="wide")
+# 1. 頁面風格優化
+st.set_page_config(page_title="高雄輕軌監測 V3.9", layout="wide")
 
 st.markdown('''
 <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
@@ -20,16 +20,17 @@ st.markdown('''
         box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 12px; border-left: 6px solid #2e7d32; 
     }
     .status-text { font-size: 1.3em; font-weight: 800; color: #d32f2f; }
-    .update-footer { font-size: 0.8em; color: #888; margin-top: 20px; line-height: 1.8; }
+    .update-footer { font-size: 0.8em; color: #888; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
 </style>
 ''', unsafe_allow_html=True)
 
-# 2. 基本資料
+# 2. 座標資料
 STATIONS = {
-    "哈瑪星": [22.6225, 120.2885], "愛河之心": [22.6565, 120.3028], "台鐵美術館": [22.6537, 120.2863],
-    "夢時代": [22.5961, 120.3045], "旅運中心": [22.6133, 120.2974], "駁二大義": [22.6193, 120.2863],
-    "內惟藝術中心": [22.6575, 120.2884], "凱旋瑞田": [22.5970, 120.3162], "籬仔內": [22.5978, 120.3236],
-    "光榮碼頭": [22.6186, 120.2931], "真愛碼頭": [22.6218, 120.2913]
+    "籬仔內": [22.5978, 120.3236], "凱旋瑞田": [22.5970, 120.3162], "前鎮之星": [22.5986, 120.3094],
+    "凱旋中華": [22.6006, 120.3023], "夢時代": [22.5961, 120.3045], "經貿園區": [22.6015, 120.3012],
+    "軟體園區": [22.6062, 120.3013], "高雄展覽館": [22.6105, 120.2995], "旅運中心": [22.6133, 120.2974],
+    "光榮碼頭": [22.6178, 120.2952], "真愛碼頭": [22.6214, 120.2923], "駁二大義": [22.6193, 120.2863],
+    "駁二蓬萊": [22.6202, 120.2809], "哈瑪星": [22.6225, 120.2885], "壽山公園站": [22.6253, 120.2798]
 }
 
 def get_now_tw():
@@ -46,7 +47,7 @@ def get_token():
 st.title("🚂 高雄輕軌即時位置監測")
 
 st.markdown('<div class="legend-box">💡 <b>圖例說明：</b>🔴 順行 (外圈) | 🔵 逆行 (內圈) | 點擊列車可看詳細資訊</div>', unsafe_allow_html=True)
-st.markdown('<div class="system-msg">✅ 系統提示：已修復 API 欄位對接，並加入圖標點擊彈出對話框。</div>', unsafe_allow_html=True)
+st.markdown('<div class="system-msg">✅ 系統提示：已成功對接 LiveBoard API，同步顯示預估到站時間。</div>', unsafe_allow_html=True)
 
 token = get_token()
 map_update = "--"
@@ -55,31 +56,30 @@ info_update = "--"
 col1, col2 = st.columns([7, 3])
 
 with col1:
-    sel_map = st.selectbox("快速切換至站點：", ["顯示全圖"] + list(STATIONS.keys()))
+    sel_map = st.selectbox("快速切換地圖視角：", ["顯示全圖"] + list(STATIONS.keys()))
     center = [22.6280, 120.3014] if sel_map == "顯示全圖" else STATIONS[sel_map]
     
-    # 使用預設底圖確保路線清楚
+    # 地圖底圖：使用預設 OpenStreetMap 確保輕軌灰色軌道與站名清晰可見
     m = folium.Map(location=center, zoom_start=13)
     
     if token:
         try:
-            # 列車位置 API
             live_url = 'https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON'
-            trains = requests.get(live_url, headers={'Authorization': f'Bearer {token}'}, timeout=5).json().get('LivePositions', [])
+            trains_res = requests.get(live_url, headers={'Authorization': f'Bearer {token}'}, timeout=5).json()
+            trains = trains_res.get('LivePositions', [])
             map_update = get_now_tw()
             
             for t in trains:
                 lat, lon = t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']
                 dir_code = t.get('Direction', 0)
-                dir_str = "順行 (外圈)" if dir_code == 0 else "逆行 (內圈)"
-                train_id = t.get('TrainNo', '未知編號')
+                dir_name = "順行 (外圈)" if dir_code == 0 else "逆行 (內圈)"
                 
-                # 加入 Popup 對話框內容
-                pop_html = f"<b>列車編號:</b> {train_id}<br><b>行駛方向:</b> {dir_str}"
+                # 點擊對話框內容
+                pop_content = f"<b>行駛方向:</b> {dir_name}<br><b>更新時間:</b> {map_update.split(' ')[1]}"
                 
                 folium.Marker(
-                    [lat, lon], 
-                    popup=folium.Popup(pop_html, max_width=200),
+                    [lat, lon],
+                    popup=folium.Popup(pop_content, max_width=200),
                     icon=folium.Icon(color='red' if dir_code==0 else 'blue', icon='train', prefix='fa')
                 ).add_to(m)
         except: pass
@@ -87,39 +87,42 @@ with col1:
 
 with col2:
     st.subheader("📊 站牌即時資訊")
-    sel_st = st.selectbox("選擇查詢站點：", list(STATIONS.keys()), key="board")
+    sel_st = st.selectbox("選擇查詢車站：", list(STATIONS.keys()), key="board")
     
     if token:
         try:
-            # 【關鍵修正】使用 RealTimeArrival 才能對接你截圖中的欄位
-            arrival_url = f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/RealTimeArrival/KLRT?$filter=StationName/Zh_tw eq '{sel_st}'&$format=JSON"
-            arrivals = requests.get(arrival_url, headers={'Authorization': f'Bearer {token}'}, timeout=5).json()
+            # 使用你提供的正確 API 路徑：LiveBoard
+            board_url = f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationName/Zh_tw eq '{sel_st}'&$format=JSON"
+            board_data = requests.get(board_url, headers={'Authorization': f'Bearer {token}'}, timeout=5).json()
             
-            if arrivals and isinstance(arrivals, list):
+            if board_data and isinstance(board_data, list):
                 info_update = get_now_tw()
-                for item in arrivals:
-                    # 對接截圖欄位：DestinationStationName -> Zh_tw
-                    dest = item.get('DestinationStationName', {}).get('Zh_tw', '未知方向')
-                    # 對接截圖欄位：EstimateTime
+                for item in board_data:
+                    # 抓取方向 (例如: 順行方向)
+                    headsign = item.get('TripHeadSign', '未知方向')
+                    # 抓取目的地
+                    dest = item.get('DestinationStationName', {}).get('Zh_tw', '端點站')
+                    # 抓取預估時間
                     est = item.get('EstimateTime')
                     
                     if est is not None:
                         status = "即時進站" if int(est) <= 1 else f"約 {est} 分鐘"
                         st.markdown(f'''
                         <div class="arrival-card">
-                            <small style="color:gray">開往：{dest}</small><br>
+                            <small style="color:gray">{headsign} (開往 {dest})</small><br>
                             <b>狀態：</b><span class="status-text">{status}</span>
                         </div>
                         ''', unsafe_allow_html=True)
             else:
-                st.info("⏳ 該站點目前無列車預估資訊")
-        except:
-            st.error("❌ 站牌資料連線異常")
+                st.info("⏳ 目前該站無列車進站預估")
+        except Exception as e:
+            st.error("❌ 站牌資料讀取失敗")
 
+# 4. 底部雙行更新資訊
 st.markdown(f'''
 <div class="update-footer">
-    🌍 地圖列車更新：{map_update} (台北時間)<br>
-    🕒 站牌資訊更新：{info_update} (台北時間)
+    📍 地圖列車最後更新 (台北)：{map_update}<br>
+    🕒 站牌資訊最後更新 (台北)：{info_update}
 </div>
 ''', unsafe_allow_html=True)
 
