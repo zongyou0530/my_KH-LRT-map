@@ -5,7 +5,7 @@ from streamlit_folium import folium_static
 import datetime
 import math
 
-# 1. 終極校準後的站點座標 (特別針對美術館段對齊底圖藍字)
+# 1. 座標微調：確保標籤與底圖藍字重合
 ALL_STATIONS = {
     "籬仔內": [22.5978, 120.3236], "凱旋瑞田": [22.5969, 120.3168], "前鎮之星": [22.5986, 120.3094],
     "凱旋中華": [22.6006, 120.3023], "夢時代": [22.5961, 120.3045], "經貿園區": [22.6015, 120.3012],
@@ -13,9 +13,9 @@ ALL_STATIONS = {
     "光榮碼頭": [22.6178, 120.2952], "真愛碼頭": [22.6214, 120.2923], "駁二大義": [22.6193, 120.2863],
     "駁二蓬萊": [22.6202, 120.2809], "哈瑪星": [22.6220, 120.2885], "壽山公園": [22.6253, 120.2798],
     "文武聖殿": [22.6300, 120.2790], "鼓山區公所": [22.6373, 120.2797], 
-    "鼓山": [22.6415, 120.2830], # 微調校準
+    "鼓山": [22.6415, 120.2830], 
     "馬卡道": [22.6493, 120.2858], 
-    "台鐵美術館": [22.6534, 120.2865], # 微調對齊底圖藍字
+    "台鐵美術館": [22.6533, 120.2865], # 再次微調對齊
     "內惟藝術中心": [22.6575, 120.2884],
     "美術館東": [22.6582, 120.2931], "聯合醫院": [22.6579, 120.2965], "龍華國小": [22.6571, 120.2996],
     "愛河之心": [22.6565, 120.3028], "新上國小": [22.6562, 120.3075], "灣仔內": [22.6558, 120.3150],
@@ -25,35 +25,46 @@ ALL_STATIONS = {
     "凱旋二聖": [22.6053, 120.3252], "輕軌機廠": [22.6001, 120.3250]
 }
 
-# 核心標記清單
 CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "駁二蓬萊", "旅運中心", "夢時代", "愛河之心"]
 
-st.set_page_config(page_title="高雄輕軌即時監測", layout="wide")
+st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# 2. 強化版字體 CSS (加入 !important 強制執行)
+# 2. 注入自定義字體：Dela Gothic One (標題) & Hachi Maru Pop (內容)
 st.markdown("""
-    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Hachi+Maru+Pop&display=swap" rel="stylesheet">
     <style>
+    /* 全域預設字體 */
     * {
-        font-family: 'DotGothic16', sans-serif !important;
+        font-family: 'Hachi Maru Pop', cursive !important;
     }
-    .stApp, .stMarkdown, div, span, p {
-        font-family: 'DotGothic16', sans-serif !important;
+    
+    /* 標題專用字體 */
+    .main-title {
+        font-family: 'Dela Gothic One', cursive !important;
+        font-size: 2.5rem;
+        color: #333;
+        text-align: center;
+        margin-bottom: 20px;
     }
-    /* 針對 Folium 彈出視窗的字體強化 */
-    .leaflet-popup-content-wrapper, .leaflet-popup-content {
-        font-family: 'DotGothic16', sans-serif !important;
+
+    /* 針對 Folium 內部的文字強制執行 */
+    .leaflet-container {
+        font-family: 'Hachi Maru Pop', cursive !important;
+    }
+    
+    .stAlert p {
+        font-family: 'Hachi Maru Pop', cursive !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("👾 高雄輕軌即時位置 (像素版)")
+# 使用自定義 CSS 類別顯示標題
+st.markdown('<p class="main-title">🚂 高雄輕軌即時位置</p>', unsafe_allow_html=True)
 
 # 提示框
-st.info("💡 藍色提示：🔴 順行 (外圈) | 🔵 逆行 (內圈)")
-st.success("📢 系統提示：已校準座標對齊底圖藍字。")
+st.info("💡 圖例：🔴 順行 (外圈) | 🔵 逆行 (內圈)")
+st.success("📢 系統提示：已更新為 Dela Gothic One 與 Hachi Maru Pop 字體組合。")
 
-# 最近站點邏輯
 def get_nearest_station(lat, lon):
     min_dist = float('inf')
     nearest_name = "路段中"
@@ -64,7 +75,6 @@ def get_nearest_station(lat, lon):
             nearest_name = f"輕軌{name}站"
     return nearest_name
 
-# API (維持原有成功邏輯)
 def get_token():
     try:
         auth_url = 'https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token'
@@ -79,20 +89,18 @@ def get_data(token):
     res = requests.get(api_url, headers=headers)
     return res.json().get('LivePositions', [])
 
-# 4. 地圖繪製
 m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
 
-# 繪製站點標籤 (綠色粗體)
+# 繪製標籤
 for name, coords in ALL_STATIONS.items():
     if name in CORE_DISPLAY:
         folium.Marker(
             location=coords,
             icon=folium.DivIcon(
-                html=f'<div style="font-family: \'DotGothic16\'; font-size: 15pt; color: #1b5e20; white-space: nowrap; font-weight: bold; text-shadow: 1px 1px 2px white;">{name}</div>'
+                html=f'<div style="font-family: \'Hachi Maru Pop\'; font-size: 16pt; color: #1b5e20; white-space: nowrap; font-weight: bold; text-shadow: 2px 2px 3px white;">{name}</div>'
             )
         ).add_to(m)
 
-# 處理列車
 try:
     token = get_token()
     positions = get_data(token)
@@ -107,10 +115,10 @@ try:
             current_nearest = get_nearest_station(lat, lon)
             
             popup_html = f"""
-            <div style="width: 150px; font-family: 'DotGothic16'; font-size: 11pt;">
-                <b>站牌：</b>{current_nearest}<br>
+            <div style="width: 160px; font-family: 'Hachi Maru Pop'; font-size: 12pt;">
+                <b>站牌：</b><br>{current_nearest}<br>
                 <b>方向：</b>{"順行" if direction==0 else "逆行"}<br>
-                <b>時間：</b>{now_str}
+                <b>更新時間：</b>{now_str}
             </div>
             """
             folium.Marker(
@@ -122,9 +130,8 @@ except:
     pass
 
 folium_static(m)
-st.write(f"最後更新: {now_str}")
+st.write(f"最後更新時間: {now_str}")
 
-# 每 30 秒自動重新執行
 import time
 time.sleep(30)
 st.rerun()
