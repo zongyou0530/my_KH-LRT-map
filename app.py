@@ -26,8 +26,8 @@ if os.path.exists(font_path):
             font-family: 'ZongYouFont';
             src: url(data:font/otf;base64,{font_base64}) format('opentype');
         }}
-        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 42px; color: #2e7d32; margin-bottom: 10px; }}
-        .custom-subtitle {{ font-family: 'ZongYouFont' !important; font-size: 24px; color: #333; margin-bottom: 10px; }}
+        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 52px; color: #2e7d32; margin-bottom: 10px; }}
+        .custom-subtitle {{ font-family: 'ZongYouFont' !important; font-size: 32px; color: #333; margin-bottom: 10px; }}
         '''
     except Exception as e:
         font_css = f"/* 字體轉換錯誤: {str(e)} */"
