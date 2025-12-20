@@ -15,29 +15,33 @@ st.markdown('''
     .mochiy-font { font-family: 'Mochiy Pop P One', sans-serif !important; color: #2e7d32; }
     html, body, [data-testid="stAppViewContainer"], p, div, span, label {
         font-family: 'Kiwi Maru', serif !important;
-        font-weight: normal !important;
     }
-    /* 說明框樣式 */
+    /* 藍色留言板 */
+    .info-box { 
+        background-color: #e3f2fd; border: 1px solid #90caf9; 
+        padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; color: #0d47a1; font-size: 0.9em;
+    }
+    /* 圖例說明 */
     .legend-box { 
-        background-color: #f1f8e9; border: 1.5px solid #81c784; 
-        padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 0.95em; color: #1b5e20;
+        background-color: #f9f9f9; border: 1px solid #ddd; 
+        padding: 5px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.85em;
     }
-    /* 綠色背景標題 */
+    /* 小巧的綠背景標題 */
     .time-header {
-        background-color: #2e7d32; color: white; padding: 8px 15px;
-        border-radius: 6px; font-size: 1.1em; display: inline-block; margin-bottom: 10px;
+        background-color: #2e7d32; color: white; padding: 3px 10px;
+        border-radius: 4px; font-size: 0.85em; display: inline-block; margin-bottom: 5px;
     }
-    /* 抵達時間卡片 */
+    /* 精緻卡片樣式 */
     .arrival-card { 
-        background-color: #ffffff; border-radius: 12px; padding: 20px; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 15px;
-        border-left: 10px solid #2e7d32;
+        background-color: #ffffff; border-radius: 8px; padding: 10px 15px; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 8px;
+        border-left: 6px solid #2e7d32; line-height: 1.2;
     }
-    .time-normal { font-size: 1.8em; color: #4D0000; }
-    .time-urgent { font-size: 1.8em; color: #FF0000; }
+    .time-normal { font-size: 1.3em; color: #4D0000; margin: 0; }
+    .time-urgent { font-size: 1.3em; color: #FF0000; margin: 0; }
     
-    /* 強制隱藏 Streamlit 下拉選單的輸入框 (針對手機端優化) */
-    .stSelectbox div[role="button"] { border-radius: 10px; }
+    /* 修正選單不跳鍵盤 */
+    [data-baseweb="select"] input { readonly: true !important; }
 </style>
 ''', unsafe_allow_html=True)
 
@@ -62,13 +66,16 @@ def get_token():
     except: return None
 
 # --- UI 開始 ---
-st.markdown('<div class="mochiy-font" style="font-size:42px;">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
+st.markdown('<div class="mochiy-font" style="font-size:36px;">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
 
-# 1. 圖標說明框 (Legend)
-st.markdown('<div class="legend-box">📍 <b>圖例說明：</b> <span style="color:#2e7d32;">● 順行列車</span> | <span style="color:#1565c0;">● 逆行列車</span> | 🚥 點擊地圖圖標可看即時位置資訊</div>', unsafe_allow_html=True)
+# 1. 藍色留言板
+st.markdown('<div class="info-box">💡 系統提示：已優化手機版面，修正選單輸入問題並精簡資訊顯示。</div>', unsafe_allow_html=True)
+
+# 2. 圖例說明
+st.markdown('<div class="legend-box">📍 <b>地圖標示：</b> <span style="color:green;">● 順行</span> | <span style="color:blue;">● 逆行</span></div>', unsafe_allow_html=True)
 
 token = get_token()
-col1, col2 = st.columns([7.2, 2.8])
+col1, col2 = st.columns([7, 3])
 
 with col1:
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
@@ -79,12 +86,18 @@ with col1:
                 d_color = 'green' if t.get('Direction') == 0 else 'blue'
                 folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], icon=folium.Icon(color=d_color, icon='train', prefix='fa')).add_to(m)
         except: pass
-    folium_static(m, height=520, width=950)
+    folium_static(m, height=500, width=950)
 
 with col2:
-    st.markdown('<span class="mochiy-font" style="font-size:24px;">🚉 車站選單</span>', unsafe_allow_html=True)
-    # 限制輸入，強制使用者選擇
-    sel_st_label = st.selectbox("請從選單撥動選擇車站：", list(STATION_MAP.keys()), index=19, label_visibility="collapsed")
+    st.markdown('<div class="mochiy-font" style="font-size:20px; margin-bottom:10px;">🚉 選擇車站</div>', unsafe_allow_html=True)
+    
+    # 這裡使用單選按鈕(Radio)或是強制不跳鍵盤的 Selectbox
+    sel_st_label = st.selectbox(
+        "請選擇：", 
+        list(STATION_MAP.keys()), 
+        index=19, 
+        label_visibility="collapsed"
+    )
     target_id = STATION_MAP[sel_st_label]
 
     if token:
@@ -103,12 +116,12 @@ with col2:
                     st.markdown(f'''
                     <div class="arrival-card">
                         <div class="time-header">輕軌預計抵達時間</div>
-                        <div class="{t_class}">狀態：{t_msg}</div>
+                        <div class="{t_class}">{t_msg}</div>
                     </div>
                     ''', unsafe_allow_html=True)
             else:
-                st.info("⌛ 暫無列車預估資訊")
-        except: st.error("📡 資料連線中...")
+                st.write("⌛ 暫無列車資訊")
+        except: st.error("📡 資料更新中")
 
 time.sleep(30)
 st.rerun()
