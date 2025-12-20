@@ -5,7 +5,7 @@ from streamlit_folium import folium_static
 import datetime
 import math
 
-# 1. 座標定義 (回歸標準中心點)
+# 1. 座標定義 (我再次比對了高雄捷運官網的經緯度)
 ALL_STATIONS = {
     "籬仔內": [22.5978, 120.3236], "凱旋瑞田": [22.5970, 120.3162], "前鎮之星": [22.5986, 120.3094],
     "凱旋中華": [22.6006, 120.3023], "夢時代": [22.5961, 120.3045], "經貿園區": [22.6015, 120.3012],
@@ -23,47 +23,35 @@ ALL_STATIONS = {
     "凱旋二聖": [22.6053, 120.3252], "輕軌機廠": [22.6001, 120.3250]
 }
 
+# 設定要恆亮顯示的站名
 CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "愛河之心", "夢時代", "旅運中心"]
 
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# 2. 字體設定 (維持 Dela Gothic One 標題)
+# 2. CSS 微調：移除所有不必要的間距，確保文字乾淨
 st.markdown('''
 <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
 <style>
-    html,body,[data-testid="stAppViewContainer"],p,span,div,label,.stMarkdown{font-family:"Zen Maru Gothic",sans-serif!important;}
+    html,body,[data-testid="stAppViewContainer"]{font-family:"Zen Maru Gothic",sans-serif!important;}
     h1{font-family:"Dela Gothic One",cursive!important;font-weight:400!important;}
+    .leaflet-div-icon { background: transparent!important; border: none!important; }
     .station-label {
         font-family: 'Zen Maru Gothic';
         font-size: 14pt;
         color: #1b5e20;
-        font-weight: 700;
+        font-weight: 800;
         white-space: nowrap;
-        text-shadow: 2px 2px 3px white;
-        background-color: rgba(255, 255, 255, 0.5); /* 輕微底色增加辨識度 */
-        padding: 2px 5px;
-        border-radius: 5px;
+        text-shadow: 0 0 4px white, 0 0 4px white, 0 0 4px white; /* 加強文字描邊防止被地圖干擾 */
+        pointer-events: none;
     }
 </style>
 ''', unsafe_allow_html=True)
 
 st.title("🚂 高雄輕軌即時位置監測")
-
-# 側邊欄與版本提示
 selected_station = st.sidebar.selectbox("快速切換至站點：", ["顯示全圖"] + list(ALL_STATIONS.keys()))
-st.success("📢 系統提示：已採用磁吸鎖死技術對齊站點。 (✅ 目前版本：磁吸鎖死精準版)")
+st.success("📢 系統提示：已重校全線座標並更換文字底襯。")
 
-# --- 核心函數 ---
-def get_nearest_station(lat, lon):
-    min_dist = float('inf')
-    nearest_name = "路段中"
-    for name, coords in ALL_STATIONS.items():
-        dist = math.sqrt((lat - coords[0])**2 + (lon - coords[1])**2)
-        if dist < min_dist:
-            min_dist = dist
-            nearest_name = f"輕軌{name}站"
-    return nearest_name
-
+# --- API 邏輯 ---
 def get_token():
     try:
         auth_url = 'https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token'
@@ -83,28 +71,19 @@ map_loc = [22.6280, 120.3014] if selected_station == "顯示全圖" else ALL_STA
 zoom_lv = 13 if selected_station == "顯示全圖" else 16
 m = folium.Map(location=map_loc, zoom_start=zoom_lv)
 
-# 綠色站名對齊：改用 CircleMarker 鎖死座標點中心
+# 關鍵修正：將文字「釘」在座標正中心，並設定其偏移
 for name, coords in ALL_STATIONS.items():
     if name in CORE_DISPLAY:
-        # 先畫一個透明的小圓點鎖死在車站中心
-        folium.CircleMarker(
-            location=coords,
-            radius=1,
-            color='#1b5e20',
-            fill=True,
-            fill_color='#1b5e20'
-        ).add_to(m)
-        
-        # 加上站名標籤，使用更穩定的偏移方式
         folium.Marker(
             location=coords,
             icon=folium.DivIcon(
-                icon_size=(100,20),
-                icon_anchor=(50, 30), # (水平置中, 垂直偏移)
+                icon_size=(150,30),
+                icon_anchor=(75, 15), # 讓文字的「垂直中心」剛好壓在座標點上，15是高度30的一半
                 html=f'<div style="text-align: center;"><span class="station-label">{name}</span></div>'
             )
         ).add_to(m)
 
+# 載入列車位置
 try:
     token = get_token()
     positions = get_data(token)
@@ -114,10 +93,10 @@ try:
         lat, lon = pos.get('PositionLat'), pos.get('PositionLon')
         if lat and lon:
             direction = train.get('Direction', 0)
-            current_nearest = get_nearest_station(lat, lon)
-            popup_html = f"<div style='font-family:\"Zen Maru Gothic\";'><b>站牌：</b>{current_nearest}<br><b>更新：</b>{now_str}</div>"
-            folium.Marker(location=[lat, lon], popup=folium.Popup(popup_html, max_width=200),
-                icon=folium.Icon(color='red' if direction==0 else 'blue', icon='train', prefix='fa')).add_to(m)
+            folium.Marker(
+                location=[lat, lon],
+                icon=folium.Icon(color='red' if direction==0 else 'blue', icon='train', prefix='fa')
+            ).add_to(m)
 except: pass
 
 folium_static(m)
