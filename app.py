@@ -5,7 +5,7 @@ from streamlit_folium import folium_static
 import datetime
 import math
 
-# 1. 座標定義
+# 1. 座標定義 (回歸標準中心點)
 ALL_STATIONS = {
     "籬仔內": [22.5978, 120.3236], "凱旋瑞田": [22.5970, 120.3162], "前鎮之星": [22.5986, 120.3094],
     "凱旋中華": [22.6006, 120.3023], "夢時代": [22.5961, 120.3045], "經貿園區": [22.6015, 120.3012],
@@ -27,32 +27,33 @@ CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "愛河之心", "夢時代", "�
 
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# 2. CSS 與字體設定
+# 2. 字體設定 (維持 Dela Gothic One 標題)
 st.markdown('''
 <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
 <style>
     html,body,[data-testid="stAppViewContainer"],p,span,div,label,.stMarkdown{font-family:"Zen Maru Gothic",sans-serif!important;}
-    h1{font-family:"Dela Gothic One",cursive!important;font-weight:400!important;color:"#1e1e1e"}
-    .station-text {
-        font-family: 'Zen Maru Gothic', sans-serif;
-        font-size: 16pt;
+    h1{font-family:"Dela Gothic One",cursive!important;font-weight:400!important;}
+    .station-label {
+        font-family: 'Zen Maru Gothic';
+        font-size: 14pt;
         color: #1b5e20;
         font-weight: 700;
         white-space: nowrap;
         text-shadow: 2px 2px 3px white;
+        background-color: rgba(255, 255, 255, 0.5); /* 輕微底色增加辨識度 */
+        padding: 2px 5px;
+        border-radius: 5px;
     }
 </style>
 ''', unsafe_allow_html=True)
 
 st.title("🚂 高雄輕軌即時位置監測")
 
-# 這一行就是剛才漏掉導致紅字的關鍵定義！
+# 側邊欄與版本提示
 selected_station = st.sidebar.selectbox("快速切換至站點：", ["顯示全圖"] + list(ALL_STATIONS.keys()))
+st.success("📢 系統提示：已採用磁吸鎖死技術對齊站點。 (✅ 目前版本：磁吸鎖死精準版)")
 
-st.success(f"📢 系統提示：紅字已修復。 (✅ 目前版本：絕對定位救援版)")
-st.info("💡 圖例：🔴 順行 (外圈) | 🔵 逆行 (內圈)")
-
-# --- 核心邏輯 ---
+# --- 核心函數 ---
 def get_nearest_station(lat, lon):
     min_dist = float('inf')
     nearest_name = "路段中"
@@ -82,15 +83,25 @@ map_loc = [22.6280, 120.3014] if selected_station == "顯示全圖" else ALL_STA
 zoom_lv = 13 if selected_station == "顯示全圖" else 16
 m = folium.Map(location=map_loc, zoom_start=zoom_lv)
 
-# 綠色站名對齊：使用 center 錨點防止放大偏移
+# 綠色站名對齊：改用 CircleMarker 鎖死座標點中心
 for name, coords in ALL_STATIONS.items():
     if name in CORE_DISPLAY:
+        # 先畫一個透明的小圓點鎖死在車站中心
+        folium.CircleMarker(
+            location=coords,
+            radius=1,
+            color='#1b5e20',
+            fill=True,
+            fill_color='#1b5e20'
+        ).add_to(m)
+        
+        # 加上站名標籤，使用更穩定的偏移方式
         folium.Marker(
             location=coords,
             icon=folium.DivIcon(
-                icon_size=(150,30),
-                icon_anchor=(75, 40), # 這是核心微調：75是寬度的一半(置中)，40是高度讓它浮在標誌上方
-                html=f'<div style="text-align:center;"><span class="station-text">{name}</span></div>'
+                icon_size=(100,20),
+                icon_anchor=(50, 30), # (水平置中, 垂直偏移)
+                html=f'<div style="text-align: center;"><span class="station-label">{name}</span></div>'
             )
         ).add_to(m)
 
