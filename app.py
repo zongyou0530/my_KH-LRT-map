@@ -39,7 +39,7 @@ STATION_MAP = {
     "C21A 內惟藝術中心": "C21A", "C21 美術館": "C21", "C22 聯合醫院": "C22", "C23 龍華國小": "C23", "C24 愛河之心": "C24",
     "C25 新上國小": "C25", "C26 灣仔內": "C26", "C27 鼎山街": "C27", "C28 高雄高工": "C28", "C29 樹德家商": "C29",
     "C30 科工館": "C30", "C31 聖功醫院": "C31", "C32 凱旋公園": "C32", "C33 衛生局": "C33", "C34 五權國小": "C34",
-    "C35 凱旋武昌": "C35", "C36 凱旋二雙": "C36", "C37 輕軌機廠": "C37"
+    "C35 凱旋武昌": "C35", "C36 凱旋二聖": "C36", "C37 輕軌機廠": "C37"
 }
 
 @st.cache_data(ttl=600)
@@ -52,7 +52,7 @@ def get_token():
 
 # --- UI ---
 st.markdown('<div class="mochiy-font" style="font-size:42px;">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
-st.markdown('<div class="info-box">💡 <b>核心更新：</b> 已修正 API 方向標記錯誤問題，現在改由「目的地」精確判定順逆行。</div>', unsafe_allow_html=True)
+st.markdown('<div class="info-box">💡 <b>終極標記修復：</b> 已優化目的地判定邏輯，確保「順行」與「逆行」同時顯示。</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-box">📍 <b>即時圖例：</b> <span style="color:#2e7d32;">● 順行 (外圈)</span> | <span style="color:#1565c0;">● 逆行 (內圈)</span></div>', unsafe_allow_html=True)
 
 token = get_token()
@@ -78,19 +78,18 @@ with col2:
         try:
             resp = requests.get("https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$format=JSON", headers={'Authorization': f'Bearer {token}'})
             all_data = resp.json()
-            
-            # 過濾出該站所有進站資訊
             matched = [d for d in all_data if d.get('StationID') == target_id and d.get('EstimateTime') is not None]
             
             if matched:
                 matched.sort(key=lambda x: x.get('EstimateTime', 999))
                 for item in matched:
-                    # --- 終極修正：不看 Direction 代碼，直接看目的地名稱 ---
                     dest = item.get('DestinationStationName', {}).get('Zh_tw', '')
                     
-                    # 判定邏輯：終點是籬仔內 = 順行；終點是輕軌機廠 = 逆行
-                    if "籬仔內" in dest:
+                    # --- 更加寬鬆且精確的雙向判定 ---
+                    # 順行：目的地是往 C1 籬仔內方向的 (包含凱旋公園等中間站)
+                    if any(x in dest for x in ["籬仔內", "凱旋", "二聖", "武昌", "五權"]):
                         d_label, d_color = "順行 (外圈)", "#2e7d32"
+                    # 逆行：目的地是往機廠方向的
                     else:
                         d_label, d_color = "逆行 (內圈)", "#1565c0"
                     
@@ -102,7 +101,7 @@ with col2:
                     <div class="arrival-card" style="border-left-color: {d_color};">
                         <div class="dir-tag" style="background-color: {d_color};">{d_label}</div>
                         <div class="{t_style}">狀態：{t_msg}</div>
-                        <div style="font-size:0.8em; color:gray;">終點站：{dest}</div>
+                        <div style="font-size:0.8em; color:gray;">終點：{dest}</div>
                     </div>
                     ''', unsafe_allow_html=True)
             else:
