@@ -69,7 +69,7 @@ def get_token():
 st.markdown('<div class="mochiy-font" style="font-size:36px;">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
 
 # 1. 藍色留言板
-st.markdown('<div class="info-box">💡 系統提示：已優化手機版面，修正選單輸入問題並精簡資訊顯示。</div>', unsafe_allow_html=True)
+st.markdown('<div class="info-box">💡 系統提示：暫時無法解決順行逆行顯示問題 請自己通靈 反正有一個是對的（50%的機率🤣）。</div>', unsafe_allow_html=True)
 
 # 2. 圖例說明
 st.markdown('<div class="legend-box">📍 <b>地圖標示：</b> <span style="color:green;">● 順行</span> | <span style="color:blue;">● 逆行</span></div>', unsafe_allow_html=True)
@@ -89,7 +89,7 @@ with col1:
     folium_static(m, height=500, width=950)
 
 with col2:
-    st.markdown('<div class="mochiy-font" style="font-size:20px; margin-bottom:10px;">🚉 選擇車站</div>', unsafe_allow_html=True)
+    st.markdown('<div class="mochiy-font" style="font-size:20px; margin-bottom:10px;">🚉 車站即時時刻表</div>', unsafe_allow_html=True)
     
     # 這裡使用單選按鈕(Radio)或是強制不跳鍵盤的 Selectbox
     sel_st_label = st.selectbox(
