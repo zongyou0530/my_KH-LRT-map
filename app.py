@@ -5,22 +5,28 @@ from streamlit_folium import folium_static
 import datetime
 import pytz
 
-# 1. 頁面配置與「局部」字體樣式注入
+# 1. 頁面配置與「雙重字體」注入
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
 st.markdown('''
-<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+P+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+P+One&family=Kiwi+Maru:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-    /* 僅針對指定的標題套用 Mochiy Pop P One，且不加粗 */
+    /* 標題：Mochiy Pop P One (不加粗) */
     .mochiy-font {
         font-family: 'Mochiy Pop P One', sans-serif !important;
-        font-weight: normal !important; /* 移除加粗，增加易讀性 */
+        font-weight: normal !important;
         color: #1a237e;
     }
+    
+    /* 內文：Kiwi Maru */
+    html, body, [data-testid="stAppViewContainer"], .stMarkdown, p, div, span, label, .stSelectbox {
+        font-family: 'Kiwi Maru', serif !important;
+    }
+
     .main-title { font-size: 42px; margin-bottom: 20px; }
     .side-title { font-size: 24px; margin-bottom: 15px; display: block; }
     
-    /* 對話框樣式 (復原為標準字體) */
+    /* 對話框樣式 */
     .info-box { background-color: #e3f2fd; border: 1px solid #90caf9; padding: 12px; border-radius: 10px; margin-bottom: 10px; }
     .guide-box { background-color: #f1f8e9; border: 1px solid #c5e1a5; padding: 12px; border-radius: 10px; margin-bottom: 25px; }
     
@@ -33,7 +39,7 @@ st.markdown('''
 </style>
 ''', unsafe_allow_html=True)
 
-# 2. 車站名單
+# 2. 基本資料
 LRT_STATIONS = ["籬仔內", "凱旋瑞田", "前鎮之星", "凱旋中華", "夢時代", "經貿園區", "軟體園區", "高雄展覽館", "旅運中心", "光榮碼頭", "真愛碼頭", "駁二大義", "駁二蓬萊", "哈瑪星", "壽山公園", "文武聖殿", "鼓山區公所", "鼓山", "馬卡道", "台鐵美術館", "內惟藝術中心", "美術館", "聯合醫院", "龍華國小", "愛河之心", "新上國小", "灣仔內", "鼎山街", "高雄高工", "樹德家商", "科工館", "聖功醫院", "凱旋公園", "衛生局", "五權國小", "凱旋武昌", "凱旋二聖", "輕軌機廠"]
 
 def get_now_tw():
@@ -47,11 +53,10 @@ def get_token():
     except: return None
 
 # --- UI 開始 ---
-# 大標題：使用指定字體且不加粗
 st.markdown('<div class="mochiy-font main-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="info-box">💡 <b>系統提示：</b> 已優化站牌資料抓取邏輯，減少 API 伺服器錯誤發生。</div>', unsafe_allow_html=True)
-st.markdown('<div class="guide-box">🎮 <b>操作指南：</b> 點擊地圖上的列車圖標可查看行駛資訊。</div>', unsafe_allow_html=True)
+st.markdown('<div class="info-box">💡 系統提示：內文已切換為 Kiwi Maru 字體，並嘗試強化美術館站點匹配。</div>', unsafe_allow_html=True)
+st.markdown('<div class="guide-box">🎮 操作指南：點擊地圖上的列車圖標可查看行駛資訊。</div>', unsafe_allow_html=True)
 
 token = get_token()
 map_time = "讀取中..."
@@ -69,7 +74,7 @@ with col1:
             for t in live_res.get('LivePositions', []):
                 lat, lon = t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']
                 d_name = "順行 (外圈)" if t.get('Direction') == 0 else "逆行 (內圈)"
-                pop_html = f"方向：{d_name}<br>同步時間：{get_now_tw().strftime('%H:%M:%S')}"
+                pop_html = f"<div style='font-family: Kiwi Maru;'>方向：{d_name}<br>同步時間：{get_now_tw().strftime('%H:%M:%S')}</div>"
                 folium.Marker(
                     [lat, lon],
                     popup=folium.Popup(pop_html, max_width=150),
@@ -79,22 +84,22 @@ with col1:
         except: map_time = "地圖資料獲取失敗"
     folium_static(m)
 
-# --- 右側：站牌 (採用更穩定的本地篩選法) ---
+# --- 右側：站牌 ---
 with col2:
-    # 側邊標題：使用指定字體且不加粗
     st.markdown('<span class="mochiy-font side-title">📊 站牌即時資訊</span>', unsafe_allow_html=True)
     sel_st = st.selectbox("選擇查詢車站：", LRT_STATIONS)
     
     if token:
         try:
-            # 策略：抓取所有站點資料，避免 API 的 filter 功能失效
             all_board_url = "https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$format=JSON"
             resp = requests.get(all_board_url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
             
             if resp.status_code == 200:
                 all_data = resp.json()
-                # 在本地端進行過濾，確保「台鐵美術館」等長站名能被正確匹配
-                valid_data = [b for b in all_data if sel_st in b.get('StationName', {}).get('Zh_tw', '') and b.get('EstimateTime') is not None]
+                
+                # 針對「美術館」這類容易出錯的站名做關鍵字匹配
+                search_key = "美術館" if "美術館" in sel_st else sel_st
+                valid_data = [b for b in all_data if search_key in b.get('StationName', {}).get('Zh_tw', '') and b.get('EstimateTime') is not None]
                 
                 if valid_data:
                     for item in valid_data:
@@ -113,9 +118,8 @@ with col2:
                     st.info(f"⏳ 站點「{sel_st}」目前暫無預估列車")
                     board_time = get_now_tw().strftime('%Y-%m-%d %H:%M:%S')
             else:
-                st.error("站牌資料暫時無法讀取，正在嘗試自動重新連接...")
+                st.error("站牌資料暫時無法讀取")
         except:
-            st.warning("網路連線不穩，請稍候 30 秒自動更新。")
             board_time = "讀取失敗"
 
 # 底部兩行更新時間
@@ -127,7 +131,6 @@ st.markdown(f'''
 </div>
 ''', unsafe_allow_html=True)
 
-# 自動重新整理
 import time
 time.sleep(30)
 st.rerun()
