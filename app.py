@@ -5,7 +5,7 @@ from streamlit_folium import folium_static
 import datetime
 import math
 
-# 1. 精準校準座標（已針對 OSM 底圖文字位置微調）
+# 1. 座標極致對齊 (根據最新截圖微調綠色標籤點位)
 ALL_STATIONS = {
     "籬仔內": [22.5978, 120.3236], "凱旋瑞田": [22.5970, 120.3162], "前鎮之星": [22.5986, 120.3094],
     "凱旋中華": [22.6006, 120.3023], "夢時代": [22.5961, 120.3045], "經貿園區": [22.6015, 120.3012],
@@ -14,32 +14,33 @@ ALL_STATIONS = {
     "駁二蓬萊": [22.6202, 120.2809], "哈瑪星": [22.6225, 120.2885], "壽山公園": [22.6253, 120.2798],
     "文武聖殿": [22.6300, 120.2790], "鼓山區公所": [22.6373, 120.2797], 
     "鼓山": [22.6415, 120.2830], "馬卡道": [22.6493, 120.2858], 
-    "台鐵美術館": [22.6537, 120.2863], "內惟藝術中心": [22.6575, 120.2884],
+    "台鐵美術館": [22.6538, 120.2861], # 稍微上移對齊藍色車站圖示
+    "內惟藝術中心": [22.6575, 120.2884],
     "美術館東": [22.6582, 120.2931], "聯合醫院": [22.6579, 120.2965], "龍華國小": [22.6571, 120.2996],
-    "愛河之心": [22.6565, 120.3028], "新上國小": [22.6562, 120.3075], "灣仔內": [22.6558, 120.3150],
+    "愛河之心": [22.6568, 120.3028], # 稍微上移對齊藍色車站圖示
+    "新上國小": [22.6562, 120.3075], "灣仔內": [22.6558, 120.3150],
     "鼎山街": [22.6555, 120.3204], "高雄高工": [22.6528, 120.3255], "樹德家商": [22.6480, 120.3298],
     "科工館": [22.6425, 120.3324], "聖功醫院": [22.6360, 120.3315], "凱旋公園": [22.6300, 120.3255],
     "衛生局": [22.6225, 120.3258], "五權國小": [22.6163, 120.3256], "凱旋武昌": [22.6110, 120.3255],
     "凱旋二聖": [22.6053, 120.3252], "輕軌機廠": [22.6001, 120.3250]
 }
 
-CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "愛河之心", "夢時代"]
+# 設定要在地圖上永久顯示綠色站名的重要站點
+CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "愛河之心", "夢時代", "旅運中心"]
 
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# 2. 徹底移除多餘文字 + 強制圓體
-# 這次我把 CSS 代碼全部寫在標籤內部，完全避開會導致解析錯誤的 Markdown 語法
-st.markdown('<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet"><style>html,body,[data-testid="stAppViewContainer"],p,span,div,label{font-family:"Zen Maru Gothic",sans-serif!important;}h1{font-family:"Zen Maru Gothic",sans-serif!important;font-weight:700!important;}</style>', unsafe_allow_html=True)
+# 2. 字體雙重修復：標題使用 Dela Gothic One，內文與地圖使用 Zen Maru Gothic
+st.markdown('<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet"><style>html,body,[data-testid="stAppViewContainer"],p,span,div,label,.stMarkdown{font-family:"Zen Maru Gothic",sans-serif!important;}h1{font-family:"Dela Gothic One",cursive!important;font-weight:400!important;color:"#1e1e1e"}.leaflet-container{font-family:"Zen Maru Gothic",sans-serif!important}</style>', unsafe_allow_html=True)
 
 st.title("🚂 高雄輕軌即時位置監測")
-# 加入一個版本標記，幫助你確認是否有更新成功
-st.caption("✅ 目前版本：圓體修正版-1220") 
+st.caption("✅ 目前版本：Dela標題+精準對齊版") 
 
 st.info("💡 圖例：🔴 順行 (外圈) | 🔵 逆行 (內圈)")
 
 selected_station = st.sidebar.selectbox("快速切換至站點：", ["顯示全圖"] + list(ALL_STATIONS.keys()))
 
-# --- 邏輯函數與地圖生成 ---
+# --- 邏輯函數 ---
 def get_nearest_station(lat, lon):
     min_dist = float('inf')
     nearest_name = "路段中"
@@ -64,10 +65,12 @@ def get_data(token):
     res = requests.get(api_url, headers=headers)
     return res.json().get('LivePositions', [])
 
+# --- 地圖與標註 ---
 map_loc = [22.6280, 120.3014] if selected_station == "顯示全圖" else ALL_STATIONS[selected_station]
 zoom_lv = 13 if selected_station == "顯示全圖" else 16
 m = folium.Map(location=map_loc, zoom_start=zoom_lv)
 
+# 顯示綠色站名標籤
 for name, coords in ALL_STATIONS.items():
     if name in CORE_DISPLAY:
         folium.Marker(
@@ -87,7 +90,7 @@ try:
         if lat and lon:
             direction = train.get('Direction', 0)
             current_nearest = get_nearest_station(lat, lon)
-            popup_html = f"<div style='font-family:\"Zen Maru Gothic\";'>站牌：{current_nearest}<br>更新：{now_str}</div>"
+            popup_html = f"<div style='font-family:\"Zen Maru Gothic\";'><b>站牌：</b>{current_nearest}<br><b>更新：</b>{now_str}</div>"
             folium.Marker(location=[lat, lon], popup=folium.Popup(popup_html, max_width=200),
                 icon=folium.Icon(color='red' if direction==0 else 'blue', icon='train', prefix='fa')).add_to(m)
 except: pass
