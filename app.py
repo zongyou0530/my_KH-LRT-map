@@ -3,74 +3,42 @@ import requests
 import folium
 from streamlit_folium import folium_static
 import datetime
-import math
+import pandas as pd
 
-# 1. 座標定義 (保留原始座標作為切換地圖視角使用)
-ALL_STATIONS = {
-    "台鐵美術館": [22.6537, 120.2863], "哈瑪星": [22.6225, 120.2885],
-    "愛河之心": [22.6565, 120.3028], "夢時代": [22.5961, 120.3045],
-    "旅運中心": [22.6133, 120.2974], "籬仔內": [22.5978, 120.3236], 
-    "凱旋瑞田": [22.5970, 120.3162], "前鎮之星": [22.5986, 120.3094],
-    "凱旋中華": [22.6006, 120.3023], "經貿園區": [22.6015, 120.3012], 
-    "軟體園區": [22.6062, 120.3013], "高雄展覽館": [22.6105, 120.2995], 
-    "光榮碼頭": [22.6178, 120.2952], "真愛碼頭": [22.6214, 120.2923], 
-    "駁二大義": [22.6193, 120.2863], "駁二蓬萊": [22.6202, 120.2809], 
-    "壽山公園": [22.6253, 120.2798], "文武聖殿": [22.6300, 120.2790], 
-    "鼓山區公所": [22.6373, 120.2797], "鼓山": [22.6415, 120.2830], 
-    "馬卡道": [22.6493, 120.2858], "內惟藝術中心": [22.6575, 120.2884], 
-    "美術館東": [22.6582, 120.2931], "聯合醫院": [22.6579, 120.2965], 
-    "龍華國小": [22.6571, 120.2996], "新上國小": [22.6562, 120.3075], 
-    "灣仔內": [22.6558, 120.3150], "鼎山街": [22.6555, 120.3204], 
-    "高雄高工": [22.6528, 120.3255], "樹德家商": [22.6480, 120.3298], 
-    "科工館": [22.6425, 120.3324], "聖功醫院": [22.6360, 120.3315], 
-    "凱旋公園": [22.6300, 120.3255], "衛生局": [22.6225, 120.3258], 
-    "五權國小": [22.6163, 120.3256], "凱旋武昌": [22.6110, 120.3255], 
-    "凱旋二聖": [22.6053, 120.3252], "輕軌機廠": [22.6001, 120.3250]
-}
+# 1. 基礎設定與樣式
+st.set_page_config(page_title="高雄輕軌監測 VERSE 3-1", layout="wide")
 
-st.set_page_config(page_title="高雄輕軌監測", layout="wide")
-
-# 2. CSS：保留主題字體，移除標籤相關樣式
 st.markdown('''
 <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
 <style>
-    html,body,[data-testid="stAppViewContainer"]{font-family:"Zen Maru Gothic",sans-serif!important;}
-    h1{font-family:"Dela Gothic One",cursive!important;font-weight:400!important;}
-    .legend-box {
-        background-color: #e3f2fd;
-        border-left: 5px solid #2196f3;
-        padding: 12px;
-        border-radius: 5px;
-        margin-bottom: 20px;
+    html, body, [data-testid="stAppViewContainer"] {
+        font-family: "Zen Maru Gothic", sans-serif !important;
+        background-color: #f8f9fa;
     }
+    h1 { font-family: "Dela Gothic One", cursive !important; color: #2c3e50; }
+    .stSelectbox label { font-weight: 700; color: #495057; }
+    /* 電子看板高級感卡片 */
+    .arrival-card {
+        background-color: #ffffff;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 10px;
+        border-left: 5px solid #2e7d32;
+    }
+    .time-highlight { color: #d32f2f; font-weight: bold; font-size: 1.2em; }
 </style>
 ''', unsafe_allow_html=True)
 
-st.title("🚂 高雄輕軌即時位置監測")
+# 2. 座標資料
+ALL_STATIONS = {
+    "哈瑪星": [22.6225, 120.2885], "愛河之心": [22.6565, 120.3028], 
+    "台鐵美術館": [22.6537, 120.2863], "夢時代": [22.5961, 120.3045], 
+    "旅運中心": [22.6133, 120.2974], "駁二大義": [22.6193, 120.2863]
+    # ... 其他站點可依需求補回
+}
 
-# 藍色圖標說明框
-st.markdown('''
-<div class="legend-box">
-    💡 <b>圖例說明：</b><br>
-    🔴 <b>順行 (外圈)：</b> 往 凱旋公園 ➔ 愛河之心 ➔ 哈瑪星<br>
-    🔵 <b>逆行 (內圈)：</b> 往 哈瑪星 ➔ 愛河之心 ➔ 凱旋公園
-</div>
-''', unsafe_allow_html=True)
-
-selected_station = st.sidebar.selectbox("快速切換至站點：", ["顯示全圖"] + list(ALL_STATIONS.keys()))
-st.info("✅ 當前版本：VERSE 2-1 (移除站名標籤，優化即時定位)")
-
-# --- API 邏輯 ---
-def get_nearest_station(lat, lon):
-    min_dist = float('inf')
-    nearest_name = "路段中"
-    for name, coords in ALL_STATIONS.items():
-        dist = math.sqrt((lat - coords[0])**2 + (lon - coords[1])**2)
-        if dist < min_dist:
-            min_dist = dist
-            nearest_name = f"輕軌{name}站"
-    return nearest_name
-
+# 3. 核心 API 函數
 def get_token():
     try:
         auth_url = 'https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token'
@@ -78,39 +46,75 @@ def get_token():
         return requests.post(auth_url, data=data).json().get('access_token')
     except: return None
 
-def get_data(token):
-    if not token: return []
-    api_url = 'https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$top=30&$format=JSON'
+def get_live_data(token):
+    api_url = 'https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON'
     headers = {'Authorization': f'Bearer {token}'}
     return requests.get(api_url, headers=headers).json().get('LivePositions', [])
 
-# --- 地圖生成 ---
-map_loc = [22.6280, 120.3014] if selected_station == "顯示全圖" else ALL_STATIONS[selected_station]
-zoom_lv = 13 if selected_station == "顯示全圖" else 16
-m = folium.Map(location=map_loc, zoom_start=zoom_lv)
+def get_station_arrival(token, station_name):
+    # 此處串接你截圖中的 StationArrival API
+    api_url = f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/RealTimeArrival/KLRT?$filter=StationName/Zh_tw eq '{station_name}'&$format=JSON"
+    headers = {'Authorization': f'Bearer {token}'}
+    try:
+        data = requests.get(api_url, headers=headers).json()
+        return data
+    except: return []
 
-# 載入列車位置
-try:
-    token = get_token()
-    positions = get_data(token)
-    now_str = (datetime.datetime.now() + datetime.timedelta(hours=8)).strftime('%H:%M:%S')
+# --- 介面佈局 ---
+st.title("🚂 高雄輕軌即時監測系統")
+st.info("✅ VERSE 3-1: 高級感地圖 + 即時到站看板")
+
+# 建立左右兩欄
+col1, col2 = st.columns([7, 3])
+
+token = get_token()
+
+with col1:
+    # 地圖選擇與顯示
+    selected_map_station = st.selectbox("快速定位站點：", ["顯示全圖"] + list(ALL_STATIONS.keys()))
+    
+    map_center = [22.6280, 120.3014] if selected_map_station == "顯示全圖" else ALL_STATIONS[selected_map_station]
+    
+    # 高級感地圖切換：CartoDB Positron (乾淨白)
+    m = folium.Map(location=map_center, zoom_start=13, tiles='CartoDB positron')
+    
+    # 繪製列車
+    positions = get_live_data(token)
     for train in positions:
         pos = train.get('TrainPosition', {})
         lat, lon = pos.get('PositionLat'), pos.get('PositionLon')
         if lat and lon:
-            direction = train.get('Direction', 0)
-            current_nearest = get_nearest_station(lat, lon)
-            popup_html = f"<div style='font-family:\"Zen Maru Gothic\";'><b>目前位置：</b>{current_nearest}<br><b>更新時間：</b>{now_str}</div>"
+            color = 'red' if train.get('Direction') == 0 else 'blue'
             folium.Marker(
                 location=[lat, lon],
-                popup=folium.Popup(popup_html, max_width=200),
-                icon=folium.Icon(color='red' if direction==0 else 'blue', icon='train', prefix='fa')
+                icon=folium.Icon(color=color, icon='train', prefix='fa')
             ).add_to(m)
-except: pass
+            
+    folium_static(m, width=None) # width=None 讓地圖自適應容器
 
-folium_static(m)
-st.write(f"最後更新時間: {now_str}")
+with col2:
+    st.subheader("📊 站牌即時資訊")
+    selected_board = st.selectbox("選擇查詢車站：", list(ALL_STATIONS.keys()))
+    
+    if token:
+        arrival_data = get_station_arrival(token, selected_board)
+        
+        if arrival_data:
+            for info in arrival_data:
+                dest = info.get('DestinationStationName', {}).get('Zh_tw', '未知')
+                gap = info.get('EstimateTime', 0)
+                status = "即時進站" if gap <= 1 else f"約 {gap} 分鐘"
+                
+                st.markdown(f'''
+                <div class="arrival-card">
+                    <small>往 {dest} 方向</small><br>
+                    <span class="time-highlight">{status}</span>
+                </div>
+                ''', unsafe_allow_html=True)
+        else:
+            st.warning("暫無到站預估資料")
 
+st.caption(f"最後更新時間: {datetime.datetime.now().strftime('%H:%M:%S')}")
 import time
 time.sleep(30)
 st.rerun()
