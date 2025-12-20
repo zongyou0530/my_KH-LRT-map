@@ -18,20 +18,32 @@ def get_token():
     return res.json().get('access_token')
 
 def get_data(token):
-    api_url = 'https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$top=30&$format=JSON'
+    api_url = 'https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/City/Kaohsiung?$top=30&$format=JSON'
     headers = {'Authorization': f'Bearer {token}'}
     res = requests.get(api_url, headers=headers)
     return res.json().get('LivePositions', [])
 
-# 執行抓取
+# --- 修改後的執行抓取部分 ---
 try:
     token = get_token()
-    positions = get_data(token)
-except:
+    # 增加錯誤檢查，確保 API 請求成功
+    api_url = 'https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$top=30&$format=JSON'
+    headers = {'Authorization': f'Bearer {token}'}
+    res = requests.get(api_url, headers=headers)
+    
+    # 這裡很關鍵：有時候資料在 LivePositions，有時候在不同的層級
+    result = res.json()
+    if isinstance(result, list):
+        positions = result
+    else:
+        positions = result.get('LivePositions', [])
+        
+    # 如果還是抓不到，印出結果方便偵錯（這行只會出現在 Streamlit 後台）
+    if not positions:
+        print(f"DEBUG API RES: {result}")
+except Exception as e:
+    st.error(f"抓取資料發生錯誤: {e}")
     positions = []
-
-m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
-train_count = 0 # 新增計數器
 
 # 嘗試畫標記
 for train in positions:
