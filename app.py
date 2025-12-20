@@ -5,7 +5,7 @@ from streamlit_folium import folium_static
 import datetime
 import math
 
-# 1. 座標微調：確保標籤與底圖藍字重合
+# 1. 精準校準座標 (對齊底圖文字)
 ALL_STATIONS = {
     "籬仔內": [22.5978, 120.3236], "凱旋瑞田": [22.5969, 120.3168], "前鎮之星": [22.5986, 120.3094],
     "凱旋中華": [22.6006, 120.3023], "夢時代": [22.5961, 120.3045], "經貿園區": [22.6015, 120.3012],
@@ -15,7 +15,7 @@ ALL_STATIONS = {
     "文武聖殿": [22.6300, 120.2790], "鼓山區公所": [22.6373, 120.2797], 
     "鼓山": [22.6415, 120.2830], 
     "馬卡道": [22.6493, 120.2858], 
-    "台鐵美術館": [22.6533, 120.2865], # 再次微調對齊
+    "台鐵美術館": [22.6534, 120.2865], 
     "內惟藝術中心": [22.6575, 120.2884],
     "美術館東": [22.6582, 120.2931], "聯合醫院": [22.6579, 120.2965], "龍華國小": [22.6571, 120.2996],
     "愛河之心": [22.6565, 120.3028], "新上國小": [22.6562, 120.3075], "灣仔內": [22.6558, 120.3150],
@@ -29,41 +29,33 @@ CORE_DISPLAY = ["台鐵美術館", "哈瑪星", "駁二蓬萊", "旅運中心", 
 
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# 2. 注入自定義字體：Dela Gothic One (標題) & Hachi Maru Pop (內容)
+# 2. 字體設定：標題 Dela Gothic One，內容 Hachi Maru Pop
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Hachi+Maru+Pop&display=swap" rel="stylesheet">
     <style>
-    /* 全域預設字體 */
+    /* 標題字體 */
+    h1 {
+        font-family: 'Dela Gothic One', cursive !important;
+    }
+    /* 全域字體（對話框、提示框、時間） */
     * {
         font-family: 'Hachi Maru Pop', cursive !important;
     }
-    
-    /* 標題專用字體 */
-    .main-title {
-        font-family: 'Dela Gothic One', cursive !important;
-        font-size: 2.5rem;
-        color: #333;
-        text-align: center;
-        margin-bottom: 20px;
-    }
-
-    /* 針對 Folium 內部的文字強制執行 */
-    .leaflet-container {
-        font-family: 'Hachi Maru Pop', cursive !important;
-    }
-    
-    .stAlert p {
+    /* 地圖內標籤字體 */
+    .leaflet-div-icon div {
         font-family: 'Hachi Maru Pop', cursive !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 使用自定義 CSS 類別顯示標題
-st.markdown('<p class="main-title">🚂 高雄輕軌即時位置</p>', unsafe_allow_html=True)
+st.title("🚂 高雄輕軌即時位置監測")
 
-# 提示框
+# 提示框（還原為之前簡潔的樣式）
 st.info("💡 圖例：🔴 順行 (外圈) | 🔵 逆行 (內圈)")
-st.success("📢 系統提示：已更新為 Dela Gothic One 與 Hachi Maru Pop 字體組合。")
+st.success("✅ 座標已校準並套用新字體。")
+
+# 側邊欄縮放控制
+selected_station = st.sidebar.selectbox("快速切換至站點：", ["顯示全圖"] + list(ALL_STATIONS.keys()))
 
 def get_nearest_station(lat, lon):
     min_dist = float('inf')
@@ -89,18 +81,22 @@ def get_data(token):
     res = requests.get(api_url, headers=headers)
     return res.json().get('LivePositions', [])
 
-m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
+# 地圖初始化
+map_loc = [22.6280, 120.3014] if selected_station == "顯示全圖" else ALL_STATIONS[selected_station]
+zoom_lv = 13 if selected_station == "顯示全圖" else 16
+m = folium.Map(location=map_loc, zoom_start=zoom_lv)
 
-# 繪製標籤
+# 繪製站名標籤
 for name, coords in ALL_STATIONS.items():
     if name in CORE_DISPLAY:
         folium.Marker(
             location=coords,
             icon=folium.DivIcon(
-                html=f'<div style="font-family: \'Hachi Maru Pop\'; font-size: 16pt; color: #1b5e20; white-space: nowrap; font-weight: bold; text-shadow: 2px 2px 3px white;">{name}</div>'
+                html=f'<div style="font-size: 15pt; color: #1b5e20; white-space: nowrap; font-weight: bold; text-shadow: 1px 1px 2px white;">{name}</div>'
             )
         ).add_to(m)
 
+# 列車處理
 try:
     token = get_token()
     positions = get_data(token)
@@ -115,10 +111,10 @@ try:
             current_nearest = get_nearest_station(lat, lon)
             
             popup_html = f"""
-            <div style="width: 160px; font-family: 'Hachi Maru Pop'; font-size: 12pt;">
+            <div style="width: 150px; line-height: 1.5;">
                 <b>站牌：</b><br>{current_nearest}<br>
                 <b>方向：</b>{"順行" if direction==0 else "逆行"}<br>
-                <b>更新時間：</b>{now_str}
+                <b>時間：</b>{now_str}
             </div>
             """
             folium.Marker(
@@ -132,6 +128,7 @@ except:
 folium_static(m)
 st.write(f"最後更新時間: {now_str}")
 
+# 自動更新
 import time
 time.sleep(30)
 st.rerun()
