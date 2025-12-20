@@ -15,7 +15,7 @@ st.markdown('''
     .mochiy-font {
         font-family: 'Mochiy Pop P One', sans-serif !important;
         font-weight: normal !important;
-        color: #2e7d32;
+        color: #39bd91;
     }
     .main-title { font-size: 52px; margin-bottom: 25px; }
     .side-title { font-size: 26px; margin-bottom: 15px; display: block; }
