@@ -26,7 +26,6 @@ if os.path.exists(font_path):
             src: url(data:font/otf;base64,{font_base64}) format('opentype');
         }}
         
-        /* 標題設定 */
         .custom-title {{ 
             font-family: 'ZongYouFont' !important; 
             font-size: 62px; 
@@ -42,39 +41,35 @@ if os.path.exists(font_path):
             font-weight: normal !important;
         }}
 
-        /* 卡片內的小標題框 - 調扁平 */
+        /* 卡片內的小標題框 - 再次壓縮高度，變成扁平色標 */
         .time-header {{
             background-color: #2e7d32; 
             color: white; 
-            padding: 2px 10px; /* 縮減上下內距，讓框框變扁 */
-            border-radius: 4px; 
-            font-size: 1.2em;   /* 稍微調小一點點以縮減高度 */
+            padding: 0px 10px; /* 上下設為 0 */
+            border-radius: 3px; 
+            font-size: 1.1em;   
             display: inline-block; 
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             font-family: 'ZongYouFont' !important;
             font-weight: normal !important;
-            line-height: 1.2;
+            line-height: 1.4; /* 調整行高讓文字居中 */
         }}
 
-        /* 狀態文字 - 維持清晰度 */
         .time-normal {{ 
             font-family: 'ZongYouFont' !important;
-            font-size: 2.0em; 
+            font-size: 2.1em; 
             color: #4D0000; 
             margin: 0; 
-            font-weight: normal !important; 
             line-height: 1;
         }}
         .time-urgent {{ 
             font-family: 'ZongYouFont' !important;
-            font-size: 2.0em; 
+            font-size: 2.1em; 
             color: #FF0000; 
             margin: 0; 
-            font-weight: normal !important; 
             line-height: 1;
         }}
 
-        /* 手機端縮放 */
         @media (max-width: 768px) {{
             .custom-title {{ font-size: 8.5vw; }}
             .custom-subtitle {{ font-size: 7vw; }}
@@ -91,35 +86,46 @@ st.markdown(f'''
     html, body, [data-testid="stAppViewContainer"], p, div, span, label {{
         font-family: 'Kiwi Maru', serif;
     }}
-    .info-box {{ background-color: #e3f2fd; border: 1px solid #90caf9; padding: 10px; border-radius: 8px; margin-bottom: 10px; color: #0d47a1; font-size: 0.85em; line-height: 1.4; }}
-    .legend-box {{ background-color: #f9f9f9; border: 1px solid #ddd; padding: 5px 12px; border-radius: 6px; margin-bottom: 10px; font-size: 0.8em; }}
+    .info-box {{ background-color: #e3f2fd; border: 1px solid #90caf9; padding: 10px; border-radius: 8px; margin-bottom: 10px; color: #0d47a1; font-size: 0.85em; }}
+    .legend-box {{ background-color: #f9f9f9; border: 1px solid #ddd; padding: 5px 12px; border-radius: 6px; margin-bottom: 10px; font-size: 0.85em; color: #333; }}
     
-    /* 縮減卡片體積 */
     .arrival-card {{ 
         background-color: #ffffff; 
         border-radius: 8px; 
-        padding: 8px 15px; /* 大幅縮減內距 */
+        padding: 5px 12px; /* 極致縮減 Padding */
         box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
-        margin-bottom: 8px; 
+        margin-bottom: 6px; 
         border-left: 6px solid #2e7d32; 
     }}
     .update-time {{ font-size: 0.75em; color: #666; margin-top: 2px; }}
 
-    /* 禁止輸入框出現游標 */
-    input {{
+    /* --- 強制鎖定選單：物理覆蓋法 --- */
+    div[data-baseweb="select"] {{
+        cursor: pointer !important;
+    }}
+    div[data-baseweb="select"] input {{
+        pointer-events: none !important; /* 讓 input 不接受點擊 */
+        user-select: none !important;
         caret-color: transparent !important;
     }}
 </style>
 
 <script>
-    // 監聽 DOM 變化，強制將所有 selectbox 的 input 設為 readonly
-    const observer = new MutationObserver(function(mutations) {{
+    function lockKeyboard() {{
         const inputs = document.querySelectorAll('div[data-baseweb="select"] input');
         inputs.forEach(input => {{
+            // 策略 1: 只要聚焦就立刻模糊，不給鍵盤機會
+            input.onfocus = function(e) {{
+                input.blur();
+                e.preventDefault();
+            }};
+            // 策略 2: 標記為 readonly 並禁用輸入法
             input.setAttribute('readonly', 'true');
+            input.setAttribute('inputmode', 'none');
         }});
-    }});
-    observer.observe(document.body, {{ childList: true, subtree: true }});
+    }}
+    // 週期性檢查，對抗頁面局部更新
+    setInterval(lockKeyboard, 500);
 </script>
 ''', unsafe_allow_html=True)
 
@@ -151,9 +157,9 @@ st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', un
 
 st.markdown('''
 <div class="info-box">
-    💡 <b>V3.6 更新摘要：</b><br>
-    • 核心修正：加入 JavaScript 自動將選單設為 ReadOnly，確保手機鍵盤不再彈出。<br>
-    • 排版緊湊：縮減卡片與綠色標題框的高度，解決佔空間問題。
+    💡 <b>V3.8 更新摘要：</b><br>
+    • 交互鎖死：加入 <code>blur()</code> 監聽器，只要偵測到點擊就立刻強制收回鍵盤。<br>
+    • UI 扁平化：再次降低卡片 Padding 並縮減綠色標題框高度，提升視覺質感。
 </div>
 ''', unsafe_allow_html=True)
 
@@ -170,6 +176,7 @@ with col1:
                 folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], icon=folium.Icon(color=d_color, icon='train', prefix='fa')).add_to(m)
         except: pass
     folium_static(m, height=480, width=950)
+    st.markdown('<div class="legend-box">📍 <b>地圖標示：</b> <span style="color:green;">● 順行 (外圈)</span> | <span style="color:blue;">● 逆行 (內圈)</span></div>', unsafe_allow_html=True)
 
 with col2:
     st.markdown('<div class="custom-subtitle">🚉 選擇車站</div>', unsafe_allow_html=True)
