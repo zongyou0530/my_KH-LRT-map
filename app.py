@@ -48,9 +48,9 @@ if os.path.exists(font_path):
         .time-header {{
             background-color: #2e7d32; 
             color: white; 
-            padding: 4px 12px; /* 增加內距讓框框變大 */
+            padding: 4px 12px; 
             border-radius: 6px; 
-            font-size: 1.0em;   /* 從 0.8em 放大 */
+            font-size: 1.0em;   
             display: inline-block; 
             margin-bottom: 8px;
             font-family: 'ZongYouFont' !important;
@@ -61,7 +61,7 @@ if os.path.exists(font_path):
         /* 狀態文字套用字體且放大 */
         .time-normal {{ 
             font-family: 'ZongYouFont' !important;
-            font-size: 1.8em; /* 再次微調放大 */
+            font-size: 1.8em; 
             color: #4D0000; 
             margin: 0; 
             font-weight: normal !important; 
@@ -92,22 +92,19 @@ st.markdown(f'''
         font-family: 'Kiwi Maru', serif;
         font-weight: normal !important;
     }}
-    .info-box {{ background-color: #e3f2fd; border: 1px solid #90caf9; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; color: #0d47a1; font-size: 0.85em; }}
+    .info-box {{ background-color: #e3f2fd; border: 1px solid #90caf9; padding: 12px 15px; border-radius: 8px; margin-bottom: 10px; color: #0d47a1; font-size: 0.9em; line-height: 1.6; }}
     .legend-box {{ background-color: #f9f9f9; border: 1px solid #ddd; padding: 5px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.8em; }}
     .arrival-card {{ background-color: #ffffff; border-radius: 8px; padding: 12px 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 10px; border-left: 8px solid #2e7d32; line-height: 1.2; }}
     .update-time {{ font-size: 0.75em; color: #666; margin-top: 2px; }}
 
     /* --- 強力鎖死手機鍵盤策略 --- */
-    /* 1. 隱藏選單內的輸入游標 */
     div[data-baseweb="select"] input {{
         caret-color: transparent !important;
         cursor: pointer !important;
     }}
-    /* 2. 針對手機瀏覽器強制 readonly */
     [data-testid="stSelectbox"] input {{
         pointer-events: none !important;
     }}
-    /* 3. 確保點擊整個選單區域都能觸發選單而非輸入框 */
     [data-testid="stSelectbox"] > div {{
         cursor: pointer !important;
     }}
@@ -139,12 +136,17 @@ now_str = datetime.datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 
 # --- UI 開始 ---
 st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
-st.markdown('<div class="info-box">💡 📝 本次更新摘要
-V3.4 交互優化與視覺強化
-• 交互優化：新增 pointer-events: none 於輸入框，物理性阻斷鍵盤彈出，確保手機用戶只能使用滾動選單。
-• 視覺強化：放大卡片左上角綠色標題框（Padding 增加）與文字大小（1.0em），提升辨識度。
-• 字體套用：將預估抵達時間的數值進一步放大至 1.8em，並同步使用自製字體。
-。</div>', unsafe_allow_html=True)
+
+# 使用三引號來處理多行更新摘要
+st.markdown('''
+<div class="info-box">
+    💡 <b>V3.4 更新摘要：</b><br>
+    • 交互優化：物理性鎖定手機選單，徹底阻斷鍵盤彈出。<br>
+    • 視覺強化：放大卡片標題框與字體，提升辨識度。<br>
+    • 字體套用：抵達時間數值放大至 1.8em 並使用自製字體。
+</div>
+''', unsafe_allow_html=True)
+
 st.markdown('<div class="legend-box">📍 <b>地圖標示：</b> <span style="color:green;">● 順行</span> | <span style="color:blue;">● 逆行</span></div>', unsafe_allow_html=True)
 
 token = get_token()
@@ -163,7 +165,6 @@ with col1:
 
 with col2:
     st.markdown('<div class="custom-subtitle">🚉 選擇車站</div>', unsafe_allow_html=True)
-    # 此處保留 selectbox 但透過 CSS 禁用 input 事件
     sel_st_label = st.selectbox("車站選單", list(STATION_MAP.keys()), index=19, label_visibility="collapsed")
     target_id = STATION_MAP[sel_st_label]
 
