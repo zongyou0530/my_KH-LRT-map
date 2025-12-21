@@ -9,7 +9,7 @@ import base64
 import os
 
 # 1. 頁面配置
-st.set_page_config(page_title="高雄輕軌監測", layout="wide")
+st.set_page_config(page_title="高雄輕軌即時地圖", layout="wide")
 
 # --- 字體讀取邏輯 ---
 font_path = "ZONGYOOOOOOU1.otf"
@@ -126,7 +126,7 @@ now_str = datetime.datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 
 # --- UI 開始 ---
 st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
-st.markdown('<div class="info-box">💡 系統提示：全站已套用 ZONGYOOOOOOU1 自製字體並移除加粗。</div>', unsafe_allow_html=True)
+st.markdown('<div class="info-box">💡 本次更新內容：套用字體並移除加粗。 ｜ 製作zongyou x gemini </div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-box">📍 <b>地圖標示：</b> <span style="color:green;">● 順行</span> | <span style="color:blue;">● 逆行</span></div>', unsafe_allow_html=True)
 
 token = get_token()
