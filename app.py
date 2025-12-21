@@ -87,7 +87,7 @@ st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', un
 st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html=True)
 
 if not is_running:
-    st.markdown('<div class="warning-box">🌙 非營運時段（06:30 - 22:30），資訊暫停更新。</div>', unsafe_allow_html=True)
+    st.markdown('<div class="warning-box">🌙 OMG!現在輕軌沒有開🤓（06:30 - 22:30）。</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="legend-box"><span>🟢 順行 (外圈)</span><span>🔵 逆行 (內圈)</span></div>', unsafe_allow_html=True)
 
