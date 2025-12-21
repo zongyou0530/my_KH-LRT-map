@@ -29,7 +29,7 @@ if os.path.exists(font_path):
         /* 標題設定 */
         .custom-title {{ 
             font-family: 'ZongYouFont' !important; 
-            font-size: 62px; 
+            font-size: 65px; /* 稍微再調大一點 */
             color: #1a531b; 
             margin-bottom: 10px; 
             white-space: nowrap;
@@ -37,38 +37,39 @@ if os.path.exists(font_path):
         }}
         .custom-subtitle {{ 
             font-family: 'ZongYouFont' !important; 
-            font-size: 40px; 
+            font-size: 45px; /* 稍微再調大一點 */
             color: #2e7d32; 
             margin-bottom: 10px; 
             white-space: nowrap;
             font-weight: normal !important;
         }}
 
-        /* 卡片內的「預計抵達時間」放大 */
+        /* 卡片內的小標題框 - 針對您的字體進行比例縮放 */
         .time-header {{
             background-color: #2e7d32; 
             color: white; 
-            padding: 4px 12px; 
+            padding: 6px 14px; /* 增加內距，讓框框更有份量 */
             border-radius: 6px; 
-            font-size: 1.0em;   
+            font-size: 1.4em;   /* 從 1.0em 大幅提升，補償字體偏小問題 */
             display: inline-block; 
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-family: 'ZongYouFont' !important;
             font-weight: normal !important;
             letter-spacing: 1px;
+            transform-origin: left bottom;
         }}
 
-        /* 狀態文字套用字體且放大 */
+        /* 狀態文字 - 再次放大 */
         .time-normal {{ 
             font-family: 'ZongYouFont' !important;
-            font-size: 1.8em; 
+            font-size: 2.2em; /* 從 1.8em 提升到 2.2em */
             color: #4D0000; 
             margin: 0; 
             font-weight: normal !important; 
         }}
         .time-urgent {{ 
             font-family: 'ZongYouFont' !important;
-            font-size: 1.8em; 
+            font-size: 2.2em; 
             color: #FF0000; 
             margin: 0; 
             font-weight: normal !important; 
@@ -76,8 +77,9 @@ if os.path.exists(font_path):
 
         /* 手機端縮放邏輯 */
         @media (max-width: 768px) {{
-            .custom-title {{ font-size: 8.5vw; white-space: normal; }}
-            .custom-subtitle {{ font-size: 7vw; }}
+            .custom-title {{ font-size: 9vw; white-space: normal; }}
+            .custom-subtitle {{ font-size: 8vw; }}
+            .time-header {{ font-size: 1.2em; }}
         }}
         '''
     except Exception as e:
@@ -94,18 +96,19 @@ st.markdown(f'''
     }}
     .info-box {{ background-color: #e3f2fd; border: 1px solid #90caf9; padding: 12px 15px; border-radius: 8px; margin-bottom: 10px; color: #0d47a1; font-size: 0.9em; line-height: 1.6; }}
     .legend-box {{ background-color: #f9f9f9; border: 1px solid #ddd; padding: 5px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.8em; }}
-    .arrival-card {{ background-color: #ffffff; border-radius: 8px; padding: 12px 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 10px; border-left: 8px solid #2e7d32; line-height: 1.2; }}
+    .arrival-card {{ background-color: #ffffff; border-radius: 10px; padding: 15px 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 12px; border-left: 10px solid #2e7d32; line-height: 1.3; }}
     .update-time {{ font-size: 0.75em; color: #666; margin-top: 2px; }}
 
-    /* --- 強力鎖死手機鍵盤策略 --- */
-    div[data-baseweb="select"] input {{
-        caret-color: transparent !important;
-        cursor: pointer !important;
+    /* --- 終極手段：覆蓋透明點擊層 --- */
+    [data-testid="stSelectbox"] {{
+        position: relative;
     }}
+    /* 在輸入框上方放一個透明蓋子，讓滑鼠/手指點不到 input，只能點到整個容器觸發選單 */
     [data-testid="stSelectbox"] input {{
         pointer-events: none !important;
+        user-select: none !important;
     }}
-    [data-testid="stSelectbox"] > div {{
+    div[data-baseweb="select"] {{
         cursor: pointer !important;
     }}
 </style>
@@ -137,13 +140,12 @@ now_str = datetime.datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 # --- UI 開始 ---
 st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
 
-# 使用三引號來處理多行更新摘要
 st.markdown('''
 <div class="info-box">
-    💡 <b>V3.4 更新摘要：</b><br>
-    • 交互優化：物理性鎖定手機選單，徹底阻斷鍵盤彈出。<br>
-    • 視覺強化：放大卡片標題框與字體，提升辨識度。<br>
-    • 字體套用：抵達時間數值放大至 1.8em 並使用自製字體。
+    💡 <b>V3.5 更新摘要：</b><br>
+    • 交互鎖死：採用 <code>pointer-events</code> 禁用 input，嘗試徹底杜絕鍵盤喚起。<br>
+    • 字體補償：手動將「預計抵達時間」框框與文字放大 40%，解決自製字體偏小問題。<br>
+    • 視覺微調：加大卡片邊線與內距，讓整體更清晰。
 </div>
 ''', unsafe_allow_html=True)
 
