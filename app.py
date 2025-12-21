@@ -27,40 +27,53 @@ if os.path.exists(font_path):
         font_base64 = base64.b64encode(font_data).decode()
         font_css = f'''
         @font-face {{ font-family: 'ZongYouFont'; src: url(data:font/otf;base64,{font_base64}) format('opentype'); }}
-        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 58px; color: #a5d6a7; margin-bottom: 0px; text-align: center; line-height: 1.2; }}
+        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 58px; color: #a5d6a7; text-align: center; margin-bottom: 0px; }}
         .credit-text {{ font-family: 'ZongYouFont' !important; font-size: 16px; color: #666; text-align: center; margin-bottom: 15px; letter-spacing: 2px; }}
-        .custom-subtitle {{ font-family: 'ZongYouFont' !important; font-size: 32px; color: #81c784; }}
-        .time-header {{ background-color: #2e7d32; color: #ffffff; padding: 2px 10px; border-radius: 4px; font-size: 1em; font-family: 'ZongYouFont' !important; }}
-        .time-val {{ font-family: 'ZongYouFont' !important; font-size: 2.3em; color: #ff8a65; margin-top: 5px; }}
-        @media (max-width: 768px) {{ .custom-title {{ font-size: 10vw; }} }}
         '''
     except: pass
 
-# 2. 注入 CSS (強效鎖死與深色優化)
+# 2. 注入 CSS (恢復圓體並輕量化卡片)
 st.markdown(f'''
 <style>
+    /* 引入圓體 Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&display=swap');
+    
     {font_css}
-    [data-testid="stAppViewContainer"] {{ background-color: #0e1117 !important; color: #fafafa !important; }}
-    html, body, p, div, span, label {{ font-family: 'Kiwi Maru', serif; color: #fafafa !important; }}
 
-    .warning-box {{ background-color: #332b00; border: 1px solid #fdd835; padding: 10px; border-radius: 8px; color: #fff176 !important; text-align: center; margin-bottom: 10px; }}
-    .legend-box {{ background-color: #1b2e1b; border: 1px solid #4caf50; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: center; gap: 20px; font-weight: bold; }}
-    .arrival-card {{ background-color: #1c1c1c; border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin-bottom: 12px; border-left: 8px solid #4caf50; }}
-    .update-time-row {{ font-size: 0.9em; color: #888 !important; margin: 5px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }}
-
-    /* 下拉選單鎖死黑科技：在 Selectbox 上方蓋一層完全透明但可點擊的 div */
-    div[data-testid="stSelectbox"] {{
-        position: relative;
+    /* 全域強制使用圓體 */
+    html, body, [data-testid="stAppViewContainer"], .stSelectbox, p, div {{
+        font-family: 'Kiwi Maru', serif !important;
+        color: #fafafa !important;
     }}
+
+    .warning-box {{ background-color: #332b00; border: 1px solid #fdd835; padding: 8px; border-radius: 8px; color: #fff176 !important; text-align: center; font-size: 0.9em; }}
+    .legend-box {{ background-color: #1b2e1b; border: 1px solid #4caf50; padding: 8px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: center; gap: 20px; font-size: 0.9em; }}
+
+    /* 輕量化到站卡片 */
+    .arrival-card {{ 
+        background-color: #161b22; 
+        border: 1px solid #30363d;
+        border-left: 5px solid #4caf50;
+        border-radius: 8px; 
+        padding: 10px 15px; 
+        margin-bottom: 8px; 
+    }}
+    .time-header {{ color: #81c784; font-size: 0.85em; margin-bottom: 2px; }}
+    .time-val {{ font-size: 1.8em; color: #ff8a65; font-weight: 500; }}
+
+    .update-time-row {{ font-size: 0.8em; color: #888 !important; margin: 3px 0; }}
+
+    /* 下拉選單鎖死鍵盤 */
     div[data-testid="stSelectbox"] input {{
+        pointer-events: none !important;
         user-select: none !important;
-        -webkit-user-select: none !important;
-        pointer-events: none !important; /* 禁止 input 接收點擊 */
     }}
+    
+    @media (max-width: 768px) {{ .custom-title {{ font-size: 10vw; }} }}
 </style>
 ''', unsafe_allow_html=True)
 
-# 3. 車站資料與 API
+# 3. 資料與 API
 STATION_MAP = {
     "C1 籬仔內": "C1", "C2 凱旋瑞田": "C2", "C3 前鎮之星": "C3", "C4 凱旋中華": "C4", "C5 夢時代": "C5",
     "C6 經貿園區": "C6", "C7 軟體園區": "C7", "C8 高雄展覽館": "C8", "C9 旅運中心": "C9", "C10 光榮碼頭": "C10",
@@ -87,14 +100,14 @@ st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', un
 st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html=True)
 
 if not is_running:
-    st.markdown('<div class="warning-box">🌙 OMG!現在輕軌沒有開🤓（06:30 - 22:30）。</div>', unsafe_allow_html=True)
+    st.markdown('<div class="warning-box">🌙 目前為非營運時段</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="legend-box"><span>🟢 順行 (外圈)</span><span>🔵 逆行 (內圈)</span></div>', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 換回實用的底圖模式（可以看到軌道和街道）
+    # 實用底圖，包含軌道細節
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
     if token and is_running:
         try:
@@ -107,7 +120,7 @@ with col_map:
     folium_static(m, height=480, width=950)
 
 with col_info:
-    st.markdown('<div class="custom-subtitle">🚉 選擇車站</div>', unsafe_allow_html=True)
+    st.markdown('<p style="font-size:1.2em; color:#81c784; margin-bottom:5px;">🚉 選擇車站</p>', unsafe_allow_html=True)
     sel_st_label = st.selectbox("Station", list(STATION_MAP.keys()), index=19, label_visibility="collapsed")
     target_id = STATION_MAP[sel_st_label]
 
@@ -120,30 +133,33 @@ with col_info:
                 for item in matched:
                     est = int(item.get('EstimateTime', 0))
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
-                    st.markdown(f'<div class="arrival-card"><div class="time-header">預計抵達時間</div><div class="time-val">{msg}</div></div>', unsafe_allow_html=True)
+                    st.markdown(f'''
+                    <div class="arrival-card">
+                        <div class="time-header">預計抵達時間</div>
+                        <div class="time-val">{msg}</div>
+                    </div>''', unsafe_allow_html=True)
             else:
                 st.info("⌛ 暫無列車資訊")
-        except: st.error("📡 資料同步中...")
+        except: st.error("📡 資料連線中")
     
     st.markdown(f'''
-        <div style="margin-top:20px;">
-            <div class="update-time-row">📍 地圖更新：{now.strftime("%Y-%m-%d %H:%M:%S")}</div>
-            <div class="update-time-row">🕒 站牌更新：{now.strftime("%Y-%m-%d %H:%M:%S")}</div>
+        <div style="margin-top:15px;">
+            <div class="update-time-row">📍 地圖更新：{now.strftime("%H:%M:%S")}</div>
+            <div class="update-time-row">🕒 站牌更新：{now.strftime("%H:%M:%S")}</div>
         </div>
     ''', unsafe_allow_html=True)
 
-# 底部留言與紀錄
+# 底部留言區
 st.markdown(f'''
-<div style="background-color: #161b22; border: 1px solid #30363d; padding: 20px; border-radius: 10px; margin-top: 40px;">
-    <div style="color: #ffcc80; font-weight: bold; margin-bottom: 8px;">✍️ 作者留言：</div>
-    <div style="color: #8b949e; margin-bottom: 20px;">這是實驗性質專案。資料由 TDX 平台提供。</div>
-    <hr style="border: 0; border-top: 1px solid #30363d; margin: 15px 0;">
-    <div style="color: #58a6ff; font-weight: bold; font-size: 0.85em;">📋 版本紀錄 (V8.0)：</div>
-    <div style="color: #8b949e; font-size: 0.8em;">
-        • <b>實用地圖回歸</b>：更換地圖底圖，現在可以清楚看到軌道路線。<br>
-        • <b>專屬紀念小字</b>：標題下方新增 zongyou x gemini 字樣。<br>
-        • <b>雙行時間強化</b>：地圖與站牌時間清晰分離顯示。<br>
-        • <b>終極避彈衣</b>：Selectbox 採用物理攔截技術，徹底鎖死鍵盤。
+<div style="background-color: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 10px; margin-top: 30px;">
+    <div style="color: #ffcc80; font-size: 0.9em; font-weight: bold; margin-bottom: 5px;">✍️ 作者留言：</div>
+    <div style="color: #8b949e; font-size: 0.85em; margin-bottom: 15px;">這是實驗性質專案。資料由 TDX 平台提供。</div>
+    <hr style="border: 0; border-top: 1px solid #30363d; margin: 10px 0;">
+    <div style="color: #58a6ff; font-size: 0.8em; font-weight: bold;">📋 版本紀錄 (V9.0)：</div>
+    <div style="color: #8b949e; font-size: 0.75em;">
+        • <b>圓體全面回歸</b>：全網頁恢復使用 Kiwi Maru 圓體。<br>
+        • <b>卡片輕量化</b>：縮減到站資訊卡片厚度，移除多餘陰影。<br>
+        • <b>鍵盤鎖定優化</b>：維持物理點擊攔截，防止手機彈出鍵盤。
     </div>
 </div>
 ''', unsafe_allow_html=True)
