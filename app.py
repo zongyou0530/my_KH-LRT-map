@@ -21,14 +21,40 @@ if os.path.exists(font_path):
         with open(font_path, "rb") as f:
             font_data = f.read()
         font_base64 = base64.b64encode(font_data).decode()
-        font_css = f'''
+                font_css = f'''
         @font-face {{
             font-family: 'ZongYouFont';
             src: url(data:font/otf;base64,{font_base64}) format('opentype');
         }}
-        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 62px; color: #2e7d32; margin-bottom: 10px; }}
-        .custom-subtitle {{ font-family: 'ZongYouFont' !important; font-size: 40px; color: #333; margin-bottom: 10px; }}
+        
+        /* --- 1. 電腦端預設大小 (您現在的大小) --- */
+        .custom-title {{ 
+            font-family: 'ZongYouFont' !important; 
+            font-size: 62px; 
+            color: #1a531b; 
+            margin-bottom: 10px; 
+            white-space: nowrap; /* 強制不換行 */
+        }}
+        .custom-subtitle {{ 
+            font-family: 'ZongYouFont' !important; 
+            font-size: 40px; 
+            color: #2e7d32; 
+            margin-bottom: 10px; 
+            white-space: nowrap; /* 強制不換行 */
+        }}
+
+        /* --- 2. 手機端自動調整 (當螢幕寬度小於 768px 時) --- */
+        @media (max-width: 768px) {{
+            .custom-title {{
+                font-size: 8.5vw;  /* 使用 vw 單位，字體會隨手機寬度自動縮放 */
+                white-space: normal; /* 若真的太長才允許換行，或維持 nowrap */
+            }}
+            .custom-subtitle {{
+                font-size: 6vw;    /* 讓副標題也隨手機寬度縮放 */
+            }}
+        }}
         '''
+
     except Exception as e:
         font_css = f"/* 字體轉換錯誤: {str(e)} */"
 else:
