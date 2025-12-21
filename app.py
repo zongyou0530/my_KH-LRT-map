@@ -25,96 +25,37 @@ if os.path.exists(font_path):
             font-family: 'ZongYouFont';
             src: url(data:font/otf;base64,{font_base64}) format('opentype');
         }}
-        
-        .custom-title {{ 
-            font-family: 'ZongYouFont' !important; 
-            font-size: 62px; 
-            color: #1a531b; 
-            margin-bottom: 5px; 
-            font-weight: normal !important;
-        }}
-        .custom-subtitle {{ 
-            font-family: 'ZongYouFont' !important; 
-            font-size: 38px; 
-            color: #2e7d32; 
-            margin-bottom: 5px; 
-            font-weight: normal !important;
-        }}
-
-        /* 卡片標籤微調 */
-        .time-header {{
-            background-color: #2e7d32; 
-            color: white; 
-            padding: 1px 10px;
-            border-radius: 4px; 
-            font-size: 1.2em; /* 稍微放大字體補足高度感 */
-            display: inline-block; 
-            margin-bottom: 3px;
-            font-family: 'ZongYouFont' !important;
-            font-weight: normal !important;
-            line-height: 1.3;
-        }}
-
+        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 62px; color: #1a531b; margin-bottom: 5px; font-weight: normal !important; }}
+        .custom-subtitle {{ font-family: 'ZongYouFont' !important; font-size: 38px; color: #2e7d32; margin-bottom: 5px; font-weight: normal !important; }}
+        .time-header {{ background-color: #2e7d32; color: white; padding: 2px 10px; border-radius: 4px; font-size: 1.2em; display: inline-block; margin-bottom: 3px; font-family: 'ZongYouFont' !important; font-weight: normal !important; line-height: 1.3; }}
         .time-normal {{ font-family: 'ZongYouFont' !important; font-size: 2.1em; color: #4D0000; margin: 0; line-height: 1.1; }}
         .time-urgent {{ font-family: 'ZongYouFont' !important; font-size: 2.1em; color: #FF0000; margin: 0; line-height: 1.1; }}
-
-        @media (max-width: 768px) {{
-            .custom-title {{ font-size: 8.5vw; }}
-            .custom-subtitle {{ font-size: 7vw; }}
-        }}
+        @media (max-width: 768px) {{ .custom-title {{ font-size: 8.5vw; }} .custom-subtitle {{ font-size: 7vw; }} }}
         '''
-    except Exception as e:
-        font_css = f"/* 字體轉換錯誤: {str(e)} */"
-
-# 2. 注入 CSS 與 JavaScript
+# 2. 注入 CSS
 st.markdown(f'''
-<link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
     {font_css}
-    html, body, [data-testid="stAppViewContainer"], p, div, span, label {{
-        font-family: 'Kiwi Maru', serif;
-    }}
-    .info-box {{ background-color: #e3f2fd; border: 1px solid #90caf9; padding: 10px; border-radius: 8px; margin-bottom: 15px; color: #0d47a1; font-size: 0.85em; }}
-    .legend-box {{ background-color: #f9f9f9; border: 1px solid #ddd; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; font-size: 0.9em; color: #333; }}
-    
-    .arrival-card {{ 
-        background-color: #ffffff; 
-        border-radius: 8px; 
-        padding: 8px 15px; 
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
-        margin-bottom: 8px; 
-        border-left: 8px solid #2e7d32; 
-    }}
+    html, body, [data-testid="stAppViewContainer"] {{ font-family: 'Kiwi Maru', serif; }}
+    .top-info-container {{ display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }}
+    .info-box {{ background-color: #e3f2fd; border: 1px solid #90caf9; padding: 10px; border-radius: 8px; color: #0d47a1; font-size: 0.85em; flex: 1; min-width: 300px; }}
+    .legend-box {{ background-color: #f1f8e9; border: 1px solid #c5e1a5; padding: 10px; border-radius: 8px; color: #33691e; font-size: 0.85em; flex: 1; min-width: 300px; }}
+    .arrival-card {{ background-color: #ffffff; border-radius: 8px; padding: 8px 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 8px; border-left: 8px solid #2e7d32; }}
     .update-time {{ font-size: 0.8em; color: #555; margin-bottom: 2px; }}
 
-    /* --- 強效遮罩：讓 input 根本接不到點擊 --- */
-    div[data-baseweb="select"] {{
-        position: relative;
+    /* --- 修復選單：隱藏輸入框但保留點擊 --- */
+    [data-testid="stSelectbox"] input {{
+        width: 0 !important;
+        opacity: 0 !important;
+        position: absolute !important;
     }}
-    /* 在 input 上方加一個透明的點擊層 */
-    div[data-baseweb="select"]::after {{
-        content: "";
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        z-index: 10;
-        cursor: pointer;
+    [data-testid="stSelectbox"] div[role="button"] {{
+        cursor: pointer !important;
     }}
 </style>
-
-<script>
-    function forceReadOnly() {{
-        const inputs = document.querySelectorAll('div[data-baseweb="select"] input');
-        inputs.forEach(input => {{
-            input.setAttribute('readonly', 'true');
-            input.setAttribute('inputmode', 'none');
-            input.blur();
-        }});
-    }}
-    setInterval(forceReadOnly, 500);
-</script>
 ''', unsafe_allow_html=True)
 
-# 3. 資料與邏輯
+# 3. 資料與邏輯處理
 STATION_MAP = {
     "C1 籬仔內": "C1", "C2 凱旋瑞田": "C2", "C3 前鎮之星": "C3", "C4 凱旋中華": "C4", "C5 夢時代": "C5",
     "C6 經貿園區": "C6", "C7 軟體園區": "C7", "C8 高雄展覽館": "C8", "C9 旅運中心": "C9", "C10 光榮碼頭": "C10",
@@ -140,12 +81,19 @@ now_str = datetime.datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 # --- UI 開始 ---
 st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
 
-st.markdown('''
-<div class="info-box">
-    💡 <b>V3.9 更新摘要：</b><br>
-    • 圖例找回：地圖標示與時間說明已完整恢復。<br>
-    • 終極防打字：使用 CSS 偽元素遮蓋輸入框，物理阻隔點擊事件。<br>
-    • 視覺修正：修復更新時間折疊問題，卡片綠框比例優化。
+# 將說明與摘要併排置頂
+st.markdown(f'''
+<div class="top-info-container">
+    <div class="legend-box">
+        📍 <b>地圖標示說明：</b><br>
+        • <span style="color:green;">● 順行 (外圈)</span>：籬仔內 → 哈瑪星 → 籬仔內<br>
+        • <span style="color:blue;">● 逆行 (內圈)</span>：籬仔內 → 凱旋公園 → 籬仔內
+    </div>
+    <div class="info-box">
+        💡 <b>V4.0 更新摘要：</b><br>
+        • 結構大改：說明區塊移至地圖上方，優化閱讀動線。<br>
+        • 選單修復：移除物理遮罩，恢復正常選擇功能並鎖死鍵盤。
+    </div>
 </div>
 ''', unsafe_allow_html=True)
 
@@ -162,9 +110,6 @@ with col1:
                 folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], icon=folium.Icon(color=d_color, icon='train', prefix='fa')).add_to(m)
         except: pass
     folium_static(m, height=480, width=950)
-    
-    # 這裡放標示說明
-    st.markdown('<div class="legend-box">📍 <b>地圖標示：</b> <span style="color:green;">● 順行 (外圈)</span> | <span style="color:blue;">● 逆行 (內圈)</span></div>', unsafe_allow_html=True)
 
 with col2:
     st.markdown('<div class="custom-subtitle">🚉 選擇車站</div>', unsafe_allow_html=True)
@@ -192,7 +137,6 @@ with col2:
                 st.write("⌛ 暫無列車資訊")
                 
             st.markdown('<hr style="margin: 10px 0;">', unsafe_allow_html=True)
-            # 確保兩行更新時間分開顯示
             st.markdown(f'<div class="update-time">📍 地圖更新：{now_str}</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="update-time">🕒 站牌更新：{now_str}</div>', unsafe_allow_html=True)
         except: st.error("📡 資料更新中")
