@@ -11,7 +11,7 @@ import os
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# --- 字體讀取邏輯 ---
+# --- 字體讀取邏輯 (修復 SyntaxError) ---
 font_path = "ZONGYOOOOOOU1.otf"
 font_css = ""
 
@@ -32,26 +32,30 @@ if os.path.exists(font_path):
         .time-urgent {{ font-family: 'ZongYouFont' !important; font-size: 2.1em; color: #FF0000; margin: 0; line-height: 1.1; }}
         @media (max-width: 768px) {{ .custom-title {{ font-size: 8.5vw; }} .custom-subtitle {{ font-size: 7vw; }} }}
         '''
+    except Exception as e:
+        font_css = f"/* 字體轉換錯誤: {str(e)} */"
+
 # 2. 注入 CSS
 st.markdown(f'''
+<link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
     {font_css}
-    html, body, [data-testid="stAppViewContainer"] {{ font-family: 'Kiwi Maru', serif; }}
+    html, body, [data-testid="stAppViewContainer"], p, div, span, label {{ font-family: 'Kiwi Maru', serif; }}
     .top-info-container {{ display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }}
-    .info-box {{ background-color: #e3f2fd; border: 1px solid #90caf9; padding: 10px; border-radius: 8px; color: #0d47a1; font-size: 0.85em; flex: 1; min-width: 300px; }}
-    .legend-box {{ background-color: #f1f8e9; border: 1px solid #c5e1a5; padding: 10px; border-radius: 8px; color: #33691e; font-size: 0.85em; flex: 1; min-width: 300px; }}
+    .info-box {{ background-color: #e3f2fd; border: 1px solid #90caf9; padding: 10px; border-radius: 8px; color: #0d47a1; font-size: 0.85em; flex: 1; min-width: 300px; line-height: 1.5; }}
+    .legend-box {{ background-color: #f1f8e9; border: 1px solid #c5e1a5; padding: 10px; border-radius: 8px; color: #33691e; font-size: 0.85em; flex: 1; min-width: 300px; line-height: 1.5; }}
     .arrival-card {{ background-color: #ffffff; border-radius: 8px; padding: 8px 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 8px; border-left: 8px solid #2e7d32; }}
     .update-time {{ font-size: 0.8em; color: #555; margin-bottom: 2px; }}
 
-    /* --- 修復選單：隱藏輸入框但保留點擊 --- */
-    [data-testid="stSelectbox"] input {{
+    /* 選單鎖定鍵盤：將 input 縮小到看不見，但保留父容器點擊功能 */
+    div[data-baseweb="select"] input {{
         width: 0 !important;
+        height: 0 !important;
         opacity: 0 !important;
         position: absolute !important;
+        pointer-events: none !important;
     }}
-    [data-testid="stSelectbox"] div[role="button"] {{
-        cursor: pointer !important;
-    }}
+    div[data-baseweb="select"] {{ cursor: pointer !important; }}
 </style>
 ''', unsafe_allow_html=True)
 
@@ -81,7 +85,6 @@ now_str = datetime.datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 # --- UI 開始 ---
 st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
 
-# 將說明與摘要併排置頂
 st.markdown(f'''
 <div class="top-info-container">
     <div class="legend-box">
@@ -90,9 +93,9 @@ st.markdown(f'''
         • <span style="color:blue;">● 逆行 (內圈)</span>：籬仔內 → 凱旋公園 → 籬仔內
     </div>
     <div class="info-box">
-        💡 <b>V4.0 更新摘要：</b><br>
-        • 結構大改：說明區塊移至地圖上方，優化閱讀動線。<br>
-        • 選單修復：移除物理遮罩，恢復正常選擇功能並鎖死鍵盤。
+        💡 <b>V4.1 更新摘要：</b><br>
+        • 語法修正：修復 V4.0 字體讀取邏輯的程式錯誤。<br>
+        • 交互優化：選單輸入框完全隱形化，保留點擊觸發下拉，避免鍵盤彈出。
     </div>
 </div>
 ''', unsafe_allow_html=True)
