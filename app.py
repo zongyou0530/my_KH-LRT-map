@@ -9,7 +9,7 @@ import base64
 import os
 
 # 1. 頁面配置
-st.set_page_config(page_title="高雄輕軌即時地圖", layout="wide")
+st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
 # --- 字體讀取邏輯 ---
 font_path = "ZONGYOOOOOOU1.otf"
@@ -26,14 +26,14 @@ if os.path.exists(font_path):
             src: url(data:font/otf;base64,{font_base64}) format('opentype');
         }}
         
-        /* 標題設定：電腦版 */
+        /* 標題設定 */
         .custom-title {{ 
             font-family: 'ZongYouFont' !important; 
             font-size: 62px; 
             color: #1a531b; 
             margin-bottom: 10px; 
             white-space: nowrap;
-            font-weight: normal !important; /* 不加粗 */
+            font-weight: normal !important;
         }}
         .custom-subtitle {{ 
             font-family: 'ZongYouFont' !important; 
@@ -41,33 +41,34 @@ if os.path.exists(font_path):
             color: #2e7d32; 
             margin-bottom: 10px; 
             white-space: nowrap;
-            font-weight: normal !important; /* 不加粗 */
-        }}
-
-        /* 卡片內的「預計抵達時間」也改用自製字體 */
-        .time-header {{
-            background-color: #2e7d32; 
-            color: white; 
-            padding: 2px 8px;
-            border-radius: 4px; 
-            font-size: 0.8em; 
-            display: inline-block; 
-            margin-bottom: 3px;
-            font-family: 'ZongYouFont' !important;
             font-weight: normal !important;
         }}
 
-        /* 狀態文字（約 X 分鐘）套用字體且不加粗 */
+        /* 卡片內的「預計抵達時間」放大 */
+        .time-header {{
+            background-color: #2e7d32; 
+            color: white; 
+            padding: 4px 12px; /* 增加內距讓框框變大 */
+            border-radius: 6px; 
+            font-size: 1.0em;   /* 從 0.8em 放大 */
+            display: inline-block; 
+            margin-bottom: 8px;
+            font-family: 'ZongYouFont' !important;
+            font-weight: normal !important;
+            letter-spacing: 1px;
+        }}
+
+        /* 狀態文字套用字體且放大 */
         .time-normal {{ 
             font-family: 'ZongYouFont' !important;
-            font-size: 1.5em; 
+            font-size: 1.8em; /* 再次微調放大 */
             color: #4D0000; 
             margin: 0; 
             font-weight: normal !important; 
         }}
         .time-urgent {{ 
             font-family: 'ZongYouFont' !important;
-            font-size: 1.5em; 
+            font-size: 1.8em; 
             color: #FF0000; 
             margin: 0; 
             font-weight: normal !important; 
@@ -76,13 +77,11 @@ if os.path.exists(font_path):
         /* 手機端縮放邏輯 */
         @media (max-width: 768px) {{
             .custom-title {{ font-size: 8.5vw; white-space: normal; }}
-            .custom-subtitle {{ font-size: 6vw; }}
+            .custom-subtitle {{ font-size: 7vw; }}
         }}
         '''
     except Exception as e:
         font_css = f"/* 字體轉換錯誤: {str(e)} */"
-else:
-    font_css = "/* 找不到字體檔案 */"
 
 # 2. 注入 CSS 樣式
 st.markdown(f'''
@@ -95,9 +94,23 @@ st.markdown(f'''
     }}
     .info-box {{ background-color: #e3f2fd; border: 1px solid #90caf9; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; color: #0d47a1; font-size: 0.85em; }}
     .legend-box {{ background-color: #f9f9f9; border: 1px solid #ddd; padding: 5px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.8em; }}
-    .arrival-card {{ background-color: #ffffff; border-radius: 8px; padding: 8px 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 6px; border-left: 5px solid #2e7d32; line-height: 1.1; }}
+    .arrival-card {{ background-color: #ffffff; border-radius: 8px; padding: 12px 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 10px; border-left: 8px solid #2e7d32; line-height: 1.2; }}
     .update-time {{ font-size: 0.75em; color: #666; margin-top: 2px; }}
-    div[data-baseweb="select"] input {{ readonly: true !important; caret-color: transparent !important; }}
+
+    /* --- 強力鎖死手機鍵盤策略 --- */
+    /* 1. 隱藏選單內的輸入游標 */
+    div[data-baseweb="select"] input {{
+        caret-color: transparent !important;
+        cursor: pointer !important;
+    }}
+    /* 2. 針對手機瀏覽器強制 readonly */
+    [data-testid="stSelectbox"] input {{
+        pointer-events: none !important;
+    }}
+    /* 3. 確保點擊整個選單區域都能觸發選單而非輸入框 */
+    [data-testid="stSelectbox"] > div {{
+        cursor: pointer !important;
+    }}
 </style>
 ''', unsafe_allow_html=True)
 
@@ -126,7 +139,12 @@ now_str = datetime.datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 
 # --- UI 開始 ---
 st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
-st.markdown('<div class="info-box">💡 本次更新內容：套用字體並移除加粗。 ｜ 製作zongyou x gemini </div>', unsafe_allow_html=True)
+st.markdown('<div class="info-box">💡 📝 本次更新摘要
+V3.4 交互優化與視覺強化
+• 交互優化：新增 pointer-events: none 於輸入框，物理性阻斷鍵盤彈出，確保手機用戶只能使用滾動選單。
+• 視覺強化：放大卡片左上角綠色標題框（Padding 增加）與文字大小（1.0em），提升辨識度。
+• 字體套用：將預估抵達時間的數值進一步放大至 1.8em，並同步使用自製字體。
+。</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-box">📍 <b>地圖標示：</b> <span style="color:green;">● 順行</span> | <span style="color:blue;">● 逆行</span></div>', unsafe_allow_html=True)
 
 token = get_token()
@@ -145,6 +163,7 @@ with col1:
 
 with col2:
     st.markdown('<div class="custom-subtitle">🚉 選擇車站</div>', unsafe_allow_html=True)
+    # 此處保留 selectbox 但透過 CSS 禁用 input 事件
     sel_st_label = st.selectbox("車站選單", list(STATION_MAP.keys()), index=19, label_visibility="collapsed")
     target_id = STATION_MAP[sel_st_label]
 
