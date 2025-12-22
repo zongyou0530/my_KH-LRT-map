@@ -121,7 +121,6 @@ st.markdown(f'''
     }}
     .pulse-circle {{ border: 4px solid #ff5252; border-radius: 50%; animation: pulse 2s infinite ease-out; }}
     
-    /* 修正地圖容器高度 */
     iframe {{ margin-bottom: 15px !important; }}
 </style>
 ''', unsafe_allow_html=True)
@@ -152,7 +151,7 @@ token = get_token()
 st.markdown('<div class="custom-title">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html=True)
 
-# 簡化說明的內容，去除多餘文字
+# 簡化說明的內容
 st.markdown('<div class="stInfo legend-box">🟢順行 | 🔵逆行 | 🔴您目前位置</div>', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3])
@@ -214,8 +213,8 @@ st.markdown(f'''
     <div class="footer-title">📦 版本更新紀錄 (V3.4) ：</div>
     <div class="footer-content-std" style="color: #abb2bf; line-height: 1.6; font-size: 0.85em;">
         • <b>螢幕適配優化</b>：精簡圖標說明文字，解決手機版面重疊切到的問題。<br>
-        • <b>手寫風格導入</b>：作者留言區塊套用自製字體，強化個人辨識度。<br>
-        • <b>視覺黃金比例</b>：再次微調標題字級，提升小螢幕舒適度。
+        • <b>手寫風格導入</b>：作者留言區塊正式套用自製字體，強化個人化辨識度。<br>
+        • <b>定位邏輯校正</b>：優化距離計算，提升在車站邊界時的自動判定精確度。
     </div>
 </div>
 ''', unsafe_allow_html=True)
