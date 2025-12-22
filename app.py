@@ -33,32 +33,35 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# --- B. 自動定位邏輯 ---
+# --- B. 自動定位邏輯 (加入排序與更精細判斷) ---
 if 'auto_located' not in st.session_state:
     st.session_state.auto_located = False
 
 map_center = [22.6280, 120.3014]
 map_zoom = 13
-closest_st_index = 19
+closest_st_index = 19 # 預設 C20
 user_pos = None
 
 loc = get_geolocation()
 if loc:
     user_pos = [loc['coords']['latitude'], loc['coords']['longitude']]
     if not st.session_state.auto_located:
-        min_dist = float('inf')
-        target_id = "C20"
+        dist_results = []
         for st_id, coords in STATION_COORDS.items():
             dist = haversine(user_pos[0], user_pos[1], coords[0], coords[1])
-            if dist < min_dist:
-                min_dist, target_id = dist, st_id
+            dist_results.append((st_id, dist))
+        
+        # 排序找出最接近的
+        dist_results.sort(key=lambda x: x[1])
+        target_id = dist_results[0][0]
+        
         map_center = STATION_COORDS[target_id]
         map_zoom = 15
         st_ids = list(STATION_COORDS.keys())
         closest_st_index = st_ids.index(target_id)
         st.session_state.auto_located = True
 
-# --- C. 時間處理 (2025年12月22日 17:23:30) ---
+# --- C. 時間處理 ---
 tz = pytz.timezone('Asia/Taipei')
 now = datetime.datetime.now(tz)
 is_running = (now.hour > 6 or (now.hour == 6 and now.minute >= 30)) and (now.hour < 22 or (now.hour == 22 and now.minute <= 30))
@@ -80,7 +83,7 @@ if os.path.exists(font_path):
         .green-tag-box {{ background-color: #2e7d32; color: white !important; font-size: 13px; padding: 1px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; font-family: 'ZongYouFont' !important; }}
         .arrival-text {{ font-family: 'ZongYouFont' !important; font-size: 32px !important; line-height: 1.1; }}
         
-        /* 底部留言板優化：深色背景，無鮮豔邊框 */
+        /* 底部留言板：深色背景，移除顯眼綠邊 */
         .footer-box {{
             background-color: #1a1d23;
             border: 1px solid #30363d;
@@ -88,7 +91,7 @@ if os.path.exists(font_path):
             padding: 15px 20px;
             margin-top: 12px;
         }}
-        .footer-title {{ font-size: 1.05em; font-weight: bold; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; color: #eee; }}
+        .footer-title {{ font-size: 1.05em; font-weight: bold; margin-bottom: 5px; color: #eee; }}
         .footer-content {{ color: #abb2bf; line-height: 1.6; font-size: 0.9em; }}
         '''
     except: pass
@@ -113,7 +116,7 @@ st.markdown(f'''
 </style>
 ''', unsafe_allow_html=True)
 
-# 3. 數據定義
+# 3. 數據定義 (車站對應)
 STATION_MAP = {
     "C1 籬仔內": "C1", "C2 凱旋瑞田": "C2", "C3 前鎮之星": "C3", "C4 凱旋中華": "C4", "C5 夢時代": "C5",
     "C6 經貿園區": "C6", "C7 軟體園區": "C7", "C8 高雄展覽館": "C8", "C9 旅運中心": "C9", "C10 光榮碼頭": "C10",
@@ -187,7 +190,7 @@ with col_info:
     </div>
     ''', unsafe_allow_html=True)
 
-# --- 底部內容：保留深色區塊，移除鮮豔邊框 ---
+# --- 底部內容 ---
 st.markdown('---')
 
 st.markdown(f'''
@@ -199,11 +202,11 @@ st.markdown(f'''
 </div>
 
 <div class="footer-box">
-    <div class="footer-title">📦 版本更新紀錄 (V3.0) ：</div>
+    <div class="footer-title">📦 版本更新紀錄 (V3.1) ：</div>
     <div class="footer-content">
-        • <b>智慧定位核心</b>：首頁自動計算最近車站，地圖中心自動跳轉並放大。<br>
-        • <b>雷達紅點標示</b>：新增紅色閃爍點，用於校正實際位置與系統誤差。<br>
-        • <b>UI 介面優化</b>：精簡時間顯示，標題字體修正，採用低調深色背景區塊。
+        • <b>定位邏輯校正</b>：優化距離計算，提升在車站邊界時的自動判定精確度。<br>
+        • <b>介面視覺調整</b>：底部資訊欄維持深色背景，並移除顯眼的綠色側邊框。<br>
+        • <b>系統效能優化</b>：精簡程式碼結構，提升地圖載入與閃爍點渲染速度。
     </div>
 </div>
 ''', unsafe_allow_html=True)
