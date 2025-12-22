@@ -13,7 +13,7 @@ from streamlit_js_eval import get_geolocation
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# --- A. 距離計算與車站座標 ---
+# --- A. 車站座標數據 ---
 STATION_COORDS = {
     "C1": [22.6015, 120.3204], "C2": [22.6026, 120.3168], "C3": [22.6025, 120.3117], "C4": [22.6033, 120.3060],
     "C5": [22.6000, 120.3061], "C6": [22.6052, 120.3021], "C7": [22.6075, 120.2989], "C8": [22.6105, 120.2982],
@@ -52,19 +52,20 @@ if loc:
             dist = haversine(user_pos[0], user_pos[1], coords[0], coords[1])
             if dist < min_dist:
                 min_dist, target_id = dist, st_id
-        
         map_center = STATION_COORDS[target_id]
         map_zoom = 15
         st_ids = list(STATION_COORDS.keys())
         closest_st_index = st_ids.index(target_id)
         st.session_state.auto_located = True
 
-# --- C. 時間與字體 (延用) ---
+# --- C. 時間處理 (精簡格式) ---
 tz = pytz.timezone('Asia/Taipei')
 now = datetime.datetime.now(tz)
 is_running = (now.hour > 6 or (now.hour == 6 and now.minute >= 30)) and (now.hour < 22 or (now.hour == 22 and now.minute <= 30))
-time_str = now.strftime("西元%Y年%m月%d日 台灣時間 %H:%M:%S")
+# 修正要求 2: 移除「西元」與「台灣時間」
+time_display = now.strftime("%Y年%m月%d日 %H:%M:%S")
 
+# --- D. 字體與 CSS ---
 font_path = "ZONGYOOOOOOU1.otf"
 font_css = ""
 if os.path.exists(font_path):
@@ -74,14 +75,14 @@ if os.path.exists(font_path):
         font_base64 = base64.b64encode(font_data).decode()
         font_css = f'''
         @font-face {{ font-family: 'ZongYouFont'; src: url(data:font/otf;base64,{font_base64}) format('opentype'); }}
-        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 64px; color: #a5d6a7; text-align: center; margin-bottom: 2px; line-height: 1.05; }}
+        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 64px; color: #a5d6a7; text-align: center; line-height: 1.05; margin-bottom: 2px; }}
+        .credit-text {{ font-family: 'ZongYouFont' !important; font-size: 18px; color: #888; text-align: center; margin-bottom: 20px; letter-spacing: 2px; }}
         .st-label-zong {{ font-family: 'ZongYouFont' !important; font-size: 26px; color: #81c784; margin-bottom: 10px; }}
         .green-tag-box {{ background-color: #2e7d32; color: white !important; font-size: 13px; padding: 1px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; font-family: 'ZongYouFont' !important; }}
         .arrival-text {{ font-family: 'ZongYouFont' !important; font-size: 32px !important; line-height: 1.1; }}
         '''
     except: pass
 
-# --- D. 增加「閃爍紅點」動畫 CSS ---
 st.markdown(f'''
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
@@ -91,24 +92,18 @@ st.markdown(f'''
         font-weight: 500 !important;
     }}
     .stInfo {{ background-color: #212d3d !important; color: #b0c4de !important; border: 1px solid #3d4d5e !important; border-radius: 12px !important; }}
-    .paper-card {{ background-color: #1a1d23; border: 1px solid #2d333b; border-left: 5px solid #4caf50; border-radius: 8px; padding: 8px 15px; margin-bottom: 8px; }}
+    .paper-card {{ background-color: #1a1d23; border: 1px solid #2d333b; border-left: 5px solid #4caf50; border-radius: 8px; padding: 12px 18px; margin-bottom: 10px; }}
     
-    /* 閃爍圓圈動畫效果 */
     @keyframes pulse {{
         0% {{ transform: scale(0.1); opacity: 0; }}
         50% {{ opacity: 0.5; }}
         100% {{ transform: scale(1.2); opacity: 0; }}
     }}
-    .pulse-circle {{
-        border: 4px solid #ff5252;
-        border-radius: 50%;
-        background-color: transparent;
-        animation: pulse 2s infinite ease-out;
-    }}
+    .pulse-circle {{ border: 4px solid #ff5252; border-radius: 50%; animation: pulse 2s infinite ease-out; }}
 </style>
 ''', unsafe_allow_html=True)
 
-# 3. 數據定義 (延用)
+# 3. 數據定義
 STATION_MAP = {
     "C1 籬仔內": "C1", "C2 凱旋瑞田": "C2", "C3 前鎮之星": "C3", "C4 凱旋中華": "C4", "C5 夢時代": "C5",
     "C6 經貿園區": "C6", "C7 軟體園區": "C7", "C8 高雄展覽館": "C8", "C9 旅運中心": "C9", "C10 光榮碼頭": "C10",
@@ -132,7 +127,8 @@ token = get_token()
 
 # --- UI 渲染 ---
 st.markdown('<div class="custom-title">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
-st.markdown('<div style="font-family: \'ZongYouFont\' !important; font-size: 18px; color: #888; text-align: center; margin-bottom: 20px; letter-spacing: 2px;">zongyou x gemini</div>', unsafe_allow_html=True)
+# 修正要求 1: 名字套用自製字體
+st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html=True)
 
 st.info("📍 地圖標示：🟢 順行  | 🔵 逆行 | 🔴 您目前的位置")
 
@@ -140,21 +136,9 @@ col_map, col_info = st.columns([7, 3])
 
 with col_map:
     m = folium.Map(location=map_center, zoom_start=map_zoom)
-    
-    # 👈 繪製使用者閃爍位置 (如果有位置資訊)
     if user_pos:
-        # 1. 核心紅點
-        folium.CircleMarker(
-            location=user_pos, radius=8, color='#ff5252', fill=True, fill_color='#ff5252', fill_opacity=0.9,
-            popup="您的精確位置"
-        ).add_to(m)
-        
-        # 2. CSS 閃爍外圈 (利用自定義 HTML)
-        icon_html = '<div class="pulse-circle" style="width: 40px; height: 40px; margin-left: -20px; margin-top: -20px;"></div>'
-        folium.Marker(
-            location=user_pos,
-            icon=folium.DivIcon(html=icon_html)
-        ).add_to(m)
+        folium.CircleMarker(location=user_pos, radius=8, color='#ff5252', fill=True, fill_color='#ff5252', fill_opacity=0.9).add_to(m)
+        folium.Marker(location=user_pos, icon=folium.DivIcon(html='<div class="pulse-circle" style="width: 40px; height: 40px; margin-left: -20px; margin-top: -20px;"></div>')).add_to(m)
 
     if token and is_running:
         try:
@@ -179,32 +163,41 @@ with col_info:
                 matched.sort(key=lambda x: x.get('EstimateTime', 999))
                 for item in matched:
                     est = int(item.get('EstimateTime', 0))
-                    color_class = "urgent-red" if est <= 2 else "calm-grey"
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
+                    color_class = "urgent-red" if est <= 2 else "calm-grey"
                     st.markdown(f'''<div class="paper-card"><div class="green-tag-box">輕軌預計抵達時間</div><div class="arrival-text {color_class}">{msg}</div></div>''', unsafe_allow_html=True)
             else:
                 st.info("⌛ 暫無列車資訊")
         except: st.error("📡 資料連線中...")
     
-    # 底部時間與偵測到的位置
     st.markdown(f'''
     <div style="font-size: 0.8em; color: #888; margin-top:10px; line-height: 1.5;">
-        📍 地圖最後更新時間：{time_str}<br>
-        🕒 站牌最後更新時間：{time_str}<br>
-        🛰️ 偵測座標：{user_pos if user_pos else "定位中..."}
+        📍 地圖更新：{time_display}<br>
+        🕒 站牌更新：{time_display}<br>
+        🛰️ 定位座標：{user_pos if user_pos else "定位中..."}
     </div>
     ''', unsafe_allow_html=True)
 
-# 底部留言區
+# 修正要求 3: 回復漂亮的留言板格式
 st.markdown('---')
-st.markdown('<div class="info-box"><b>✍️ 作者留言：</b><br>各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。</div>', unsafe_allow_html=True)
+st.markdown(f'''
+<div class="paper-card">
+    <div class="green-tag-box">✍️ 作者留言</div>
+    <div style="color: #ccc; font-size: 15px; margin-top: 8px;">
+        各位親朋好友們，拜託幫我看看準不準，不準的話可以搜尋 ig 跟我講謝謝。<br>
+        資料由 TDX 平台提供，僅供參考。
+    </div>
+</div>
+''', unsafe_allow_html=True)
 
 st.markdown(f'''
-<div class="update-box">
-    <b>📦 版本更新紀錄 (V24.0)：</b><br>
-    • <b>雷達定位標示</b>：地圖新增紅色閃爍點，即時顯示您的瀏覽器定位位置。<br>
-    • <b>座標資訊透明化</b>：右側資訊欄同步顯示偵測到的經緯度。<br>
-    • <b>使用者反饋優化</b>：便於比對實際位置與車站系統數據的誤差。
+<div class="paper-card" style="border-left: 5px solid #2196f3;">
+    <div class="green-tag-box" style="background-color: #1976d2;">📦 版本紀錄 (V3.0)</div>
+    <div style="color: #ccc; font-size: 14px; margin-top: 8px; line-height: 1.6;">
+        • <b>智慧定位核心</b>：首頁自動計算最近車站，地圖中心自動跳轉並放大。<br>
+        • <b>雷達紅點標示</b>：新增紅色閃爍點，用於校正實際位置與系統誤差。<br>
+        • <b>UI 介面優化</b>：精簡時間顯示，修復標題字體，回復經典卡片式風格。
+    </div>
 </div>
 ''', unsafe_allow_html=True)
 
