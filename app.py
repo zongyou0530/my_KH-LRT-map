@@ -32,11 +32,11 @@ if os.path.exists(font_path):
         }}
         .custom-title {{ 
             font-family: 'ZongYouFont' !important; 
-            font-size: 64px; /* 👈 標題變更大了，原本是 52px */
+            font-size: 64px; 
             color: #a5d6a7; 
             text-align: center; 
             margin-bottom: 2px; 
-            line-height: 1.05; /* 👈 行距再縮小一點點，讓兩行更緊湊舒服 */
+            line-height: 1.05; 
             white-space: normal; 
             letter-spacing: -1px;
         }}
@@ -73,19 +73,27 @@ if os.path.exists(font_path):
     except:
         pass
 
-# 這裡幫你把全域改為「粉圓體效果 (M PLUS Rounded 1c)」
+# 這裡幫你把全域改為「Zen Maru Gothic」
 st.markdown(f'''
 <style>
-    /* 載入最接近 Huninn 粉圓體質感的 Google Font */
-    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap');
+    /* 載入 Zen Maru Gothic (提供不同字重) */
+    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
     
     {font_css}
 
-    /* 全域設定：強制使用圓體，並將字重設為 500 (中黑) 讓它看起來紮實不虛 */
+    /* 全域設定：強制使用 Zen Maru Gothic */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], 
     [data-testid="stMarkdownContainer"], p, span, div, select, button, label {{
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        font-family: 'Zen Maru Gothic', sans-serif !important;
         font-weight: 500 !important;
+    }}
+
+    /* 圖標說明欄 (Legend Box) 改為更質感、優雅的深海藍色調 */
+    .stInfo {{
+        background-color: #212d3d !important; 
+        color: #b0c4de !important;
+        border: 1px solid #3d4d5e !important;
+        border-radius: 12px !important;
     }}
 
     /* 纖薄卡片比例 */
@@ -105,10 +113,8 @@ st.markdown(f'''
     .info-box {{ background-color: #161b22; border-radius: 10px; padding: 15px; margin-top: 15px; border: 1px solid #30363d; font-size: 0.9em; }}
     .update-box {{ background-color: #0d1117; border-radius: 8px; padding: 12px; font-size: 0.85em; color: #8b949e; line-height: 1.6; border: 1px solid #21262d; margin-top: 10px; }}
     
-    /* 手機版標題微調：確保在大標題下不會超出螢幕 */
     @media (max-width: 768px) {{ 
         .custom-title {{ font-size: 42px; line-height: 1.1; }} 
-        .credit-text {{ font-size: 14px; }}
     }}
 </style>
 ''', unsafe_allow_html=True)
@@ -136,20 +142,18 @@ def get_token():
 token = get_token()
 
 # --- UI 渲染 ---
-# 使用 <br> 標籤實現你喜歡的兩行換行
 st.markdown('<div class="custom-title">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html=True)
 
 if not is_running:
     st.warning("⚠️ 提醒：目前為非營運時段（營運時間：06:30 - 22:30）。")
 
-# 這裡的地圖標示框也換成圓體感了
+# 這一格變色了喔！使用了舒服的深藍灰色
 st.info("📍 地圖標示：🟢 順行  | 🔵 逆行 ")
 
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 建立地圖
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
     if token and is_running:
         try:
@@ -189,10 +193,10 @@ st.markdown('<div class="info-box"><b>✍️ 作者留言：</b><br>這是一個
 
 st.markdown(f'''
 <div class="update-box">
-    <b>📦 版本更新紀錄 (V20.0)：</b><br>
-    • <b>粉圓體視覺進化</b>：全網頁改用高品質圓體，質感大幅提升。<br>
-    • <b>標題震撼力提升</b>：標題字體加大至 64px，並縮小行距讓兩行對齊更精美。<br>
-    • <b>自訂字體鎖定</b>：完美融合你的 ZongYouFont 與全域圓體。
+    <b>📦 版本更新紀錄 (V21.0)：</b><br>
+    • <b>Zen Maru Gothic 導入</b>：換上優雅氣質的日系圓體，閱讀感更升級。<br>
+    • <b>圖標列色調優化</b>：改用沉穩的深藍灰色背景，讓標籤更清晰。<br>
+    • <b>全方位視覺平衡</b>：維持標題換行格式，細微調整間距。
 </div>
 ''', unsafe_allow_html=True)
 
