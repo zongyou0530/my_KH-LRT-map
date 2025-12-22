@@ -16,7 +16,7 @@ tz = pytz.timezone('Asia/Taipei')
 now = datetime.datetime.now(tz)
 is_running = (now.hour > 6 or (now.hour == 6 and now.minute >= 30)) and (now.hour < 22 or (now.hour == 22 and now.minute <= 30))
 
-# --- 字體載入 ---
+# --- 字體與緊湊標題樣式 ---
 font_path = "ZONGYOOOOOOU1.otf"
 font_css = ""
 if os.path.exists(font_path):
@@ -26,76 +26,80 @@ if os.path.exists(font_path):
         font_base64 = base64.b64encode(font_data).decode()
         font_css = f'''
         @font-face {{ font-family: 'ZongYouFont'; src: url(data:font/otf;base64,{font_base64}) format('opentype'); }}
-        .zong-font {{ font-family: 'ZongYouFont' !important; }}
-        /* 標題不換行處理 */
+        
+        /* 標題大尺寸、不換行、極窄行距 */
+        .title-container {{ text-align: center; line-height: 0.95; margin-bottom: 15px; }}
         .custom-title {{ 
             font-family: 'ZongYouFont' !important; 
-            font-size: 42px; 
+            font-size: 52px; 
             color: #a5d6a7; 
-            text-align: center; 
-            margin-bottom: 0px;
             white-space: nowrap; 
-            overflow: hidden;
-            text-overflow: ellipsis;
+            display: block;
         }}
-        .credit-text {{ font-family: 'ZongYouFont' !important; font-size: 14px; color: #666; text-align: center; margin-bottom: 10px; letter-spacing: 2px; }}
+        .credit-text {{ 
+            font-family: 'ZongYouFont' !important; 
+            font-size: 16px; 
+            color: #666; 
+            letter-spacing: 3px;
+            margin-top: -5px; /* 縮減與標題的間隔 */
+            display: block;
+        }}
         '''
     except: pass
 
-# 2. 注入 CSS (優化標籤大小與卡片厚度)
+# 2. 注入極簡 CSS (優化卡片比例)
 st.markdown(f'''
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&display=swap');
     {font_css}
 
-    /* 全域預設圓體 */
-    html, body, [data-testid="stAppViewContainer"], p, div {{
-        font-family: 'Kiwi Maru', serif;
-    }}
+    html, body, [data-testid="stAppViewContainer"] {{ font-family: 'Kiwi Maru', serif; }}
 
-    /* 極簡纖薄卡片 */
+    /* 纖薄美型卡片 */
     .paper-card {{ 
         background-color: #1a1d23; 
         border: 1px solid #2d333b;
         border-left: 5px solid #4caf50;
         border-radius: 8px; 
-        padding: 5px 12px; /* 極小化內距 */
-        margin-bottom: 6px;
+        padding: 6px 14px; 
+        margin-bottom: 8px;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
     }}
     
-    /* 放大後的綠色標籤文字 */
+    /* 放大版綠標籤 */
     .green-tag-box {{
         background-color: #2e7d32;
         color: #ffffff !important;
-        font-size: 0.9em; /* 文字放大 */
-        padding: 3px 10px;
-        border-radius: 5px;
+        font-size: 14px; 
+        padding: 2px 10px;
+        border-radius: 4px;
         display: inline-block;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
         font-family: 'ZongYouFont' !important;
     }}
 
     .arrival-text {{
         font-family: 'ZongYouFont' !important;
-        font-size: 2.0em !important;
-        line-height: 1.0;
+        font-size: 32px !important;
+        line-height: 1.1;
         margin-top: 2px;
     }}
 
-    /* 顏色邏輯 */
+    /* 動態顏色 */
     .urgent-red {{ color: #ff5252 !important; }}
     .calm-grey {{ color: #78909c !important; }}
 
     .st-label-zong {{ font-family: 'ZongYouFont' !important; font-size: 24px; color: #81c784; margin-bottom: 5px; }}
     
-    /* 手機端標題縮小以防換行 */
+    /* 手機自動縮放標題以維持不換行 */
     @media (max-width: 768px) {{
-        .custom-title {{ font-size: 28px; }}
+        .custom-title {{ font-size: 34px; }}
+        .credit-text {{ font-size: 12px; }}
     }}
 </style>
 ''', unsafe_allow_html=True)
 
-# 3. 數據定義 (維持穩定性)
+# 3. 車站資料與邏輯 (維持穩定性)
 STATION_MAP = {
     "C1 籬仔內": "C1", "C2 凱旋瑞田": "C2", "C3 前鎮之星": "C3", "C4 凱旋中華": "C4", "C5 夢時代": "C5",
     "C6 經貿園區": "C6", "C7 軟體園區": "C7", "C8 高雄展覽館": "C8", "C9 旅運中心": "C9", "C10 光榮碼頭": "C10",
@@ -117,9 +121,13 @@ def get_token():
 
 token = get_token()
 
-# --- UI 開始 ---
-st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
-st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html=True)
+# --- UI 渲染 ---
+st.markdown('''
+<div class="title-container">
+    <span class="custom-title">高雄輕軌即時位置監測</span>
+    <span class="credit-text">zongyou x gemini</span>
+</div>
+''', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3])
 
@@ -158,12 +166,12 @@ with col_info:
                     </div>''', unsafe_allow_html=True)
             else:
                 st.info("⌛ 暫無列車資訊")
-        except: st.error("📡 資料連線中")
+        except: st.error("📡 資料讀取中")
     
     st.markdown(f'''
         <div style="margin-top:10px; border-top: 1px solid #333; padding-top: 5px;">
-            <div style="font-size: 0.75em; color: #666;">📍 地圖更新：{now.strftime("%H:%M:%S")}</div>
-            <div style="font-size: 0.75em; color: #666;">🕒 站牌更新：{now.strftime("%H:%M:%S")}</div>
+            <div style="font-size: 0.75em; color: #555;">📍 地圖更新：{now.strftime("%H:%M:%S")}</div>
+            <div style="font-size: 0.75em; color: #555;">🕒 站牌更新：{now.strftime("%H:%M:%S")}</div>
         </div>
     ''', unsafe_allow_html=True)
 
