@@ -75,17 +75,22 @@ if os.path.exists(font_path):
         font_css = f'''
         @font-face {{ font-family: 'ZongYouFont'; src: url(data:font/otf;base64,{font_base64}) format('opentype'); }}
         
-        /* 標題與標籤 */
-        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 48px; color: #a5d6a7; text-align: center; line-height: 1.1; margin-bottom: 2px; }}
-        .credit-text {{ font-family: 'ZongYouFont' !important; font-size: 16px; color: #888; text-align: center; margin-bottom: 15px; letter-spacing: 2px; }}
-        .st-label-zong {{ font-family: 'ZongYouFont' !important; font-size: 24px; color: #81c784; margin-bottom: 8px; }}
-        .green-tag-box {{ background-color: #2e7d32; color: white !important; font-size: 12px; padding: 1px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; font-family: 'ZongYouFont' !important; }}
-        .arrival-text {{ font-family: 'ZongYouFont' !important; font-size: 28px !important; line-height: 1.1; }}
+        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 44px; color: #a5d6a7; text-align: center; line-height: 1.1; margin-bottom: 2px; }}
+        .credit-text {{ font-family: 'ZongYouFont' !important; font-size: 15px; color: #888; text-align: center; margin-bottom: 12px; letter-spacing: 2px; }}
+        .st-label-zong {{ font-family: 'ZongYouFont' !important; font-size: 22px; color: #81c784; margin-bottom: 8px; }}
+        .green-tag-box {{ background-color: #2e7d32; color: white !important; font-size: 11px; padding: 1px 7px; border-radius: 4px; display: inline-block; margin-bottom: 4px; font-family: 'ZongYouFont' !important; }}
+        .arrival-text {{ font-family: 'ZongYouFont' !important; font-size: 26px !important; line-height: 1.1; }}
         
-        /* 地圖說明文字單行化 */
-        .legend-box {{ font-size: 13px !important; white-space: nowrap; }}
+        /* 圖標說明優化：縮小並增加下邊距 */
+        .legend-box {{ 
+            font-size: 12px !important; 
+            margin-bottom: 10px !important; 
+            padding: 6px 10px !important;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }}
         
-        /* 底部留言區：作者的話套用自製字體 */
         .footer-box {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 10px; padding: 15px 20px; margin-top: 12px; }}
         .footer-title {{ font-size: 1em; font-weight: bold; margin-bottom: 5px; color: #eee; }}
         .footer-content {{ 
@@ -106,7 +111,7 @@ st.markdown(f'''
         font-family: 'Zen Maru Gothic', sans-serif !important;
         font-weight: 500 !important;
     }}
-    .stInfo {{ background-color: #212d3d !important; color: #b0c4de !important; border: 1px solid #3d4d5e !important; border-radius: 12px !important; padding: 8px 12px !important; }}
+    .stInfo {{ background-color: #212d3d !important; color: #b0c4de !important; border: 1px solid #3d4d5e !important; border-radius: 10px !important; }}
     .paper-card {{ background-color: #1a1d23; border: 1px solid #2d333b; border-left: 5px solid #4caf50; border-radius: 8px; padding: 12px 18px; margin-bottom: 10px; }}
     
     @keyframes pulse {{
@@ -115,10 +120,13 @@ st.markdown(f'''
         100% {{ transform: scale(1.2); opacity: 0; }}
     }}
     .pulse-circle {{ border: 4px solid #ff5252; border-radius: 50%; animation: pulse 2s infinite ease-out; }}
+    
+    /* 修正地圖容器高度 */
+    iframe {{ margin-bottom: 15px !important; }}
 </style>
 ''', unsafe_allow_html=True)
 
-# 3. 數據定義 (車站對應)
+# 3. 數據定義
 STATION_MAP = {
     "C1 籬仔內": "C1", "C2 凱旋瑞田": "C2", "C3 前鎮之星": "C3", "C4 凱旋中華": "C4", "C5 夢時代": "C5",
     "C6 經貿園區": "C6", "C7 軟體園區": "C7", "C8 高雄展覽館": "C8", "C9 旅運中心": "C9", "C10 光榮碼頭": "C10",
@@ -144,7 +152,8 @@ token = get_token()
 st.markdown('<div class="custom-title">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="stInfo legend-box">📍 地圖標示：🟢 順行 | 🔵 逆行 | 🔴 您目前的位置</div>', unsafe_allow_html=True)
+# 簡化說明的內容，去除多餘文字
+st.markdown('<div class="stInfo legend-box">🟢順行 | 🔵逆行 | 🔴您目前位置</div>', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3])
 
@@ -162,7 +171,7 @@ with col_map:
                 folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], 
                               icon=folium.Icon(color=d_color, icon='train', prefix='fa')).add_to(m)
         except: pass
-    folium_static(m, height=480, width=900)
+    folium_static(m, height=420, width=900)
 
 with col_info:
     st.markdown('<div class="st-label-zong">🚉 輕軌車站即時站牌</div>', unsafe_allow_html=True)
@@ -186,9 +195,8 @@ with col_info:
     
     st.markdown(f'''
     <div style="font-size: 0.8em; color: #888; margin-top:10px; line-height: 1.5;">
-        📍 地圖更新：{time_display}<br>
-        🕒 站牌更新：{time_display}<br>
-        🛰️ 定位座標：{user_pos if user_pos else "定位中..."}
+        📍 更新：{time_display}<br>
+        🛰️ 座標：{user_pos if user_pos else "定位中..."}
     </div>
     ''', unsafe_allow_html=True)
 
@@ -203,11 +211,11 @@ st.markdown(f'''
 </div>
 
 <div class="footer-box">
-    <div class="footer-title">📦 版本更新紀錄 (V3.3) ：</div>
+    <div class="footer-title">📦 版本更新紀錄 (V3.4) ：</div>
     <div class="footer-content-std" style="color: #abb2bf; line-height: 1.6; font-size: 0.85em;">
-        • <b>手寫風格導入</b>：作者留言區塊正式套用自製字體，強化個人化辨識度。<br>
-        • <b>視覺黃金比例</b>：微調標題字級與地圖說明大小，更適配行動裝置。<br>
-        • <b>定位邏輯校正</b>：優化距離計算，提升在車站邊界時的自動判定精確度。
+        • <b>螢幕適配優化</b>：精簡圖標說明文字，解決手機版面重疊切到的問題。<br>
+        • <b>手寫風格導入</b>：作者留言區塊套用自製字體，強化個人辨識度。<br>
+        • <b>視覺黃金比例</b>：再次微調標題字級，提升小螢幕舒適度。
     </div>
 </div>
 ''', unsafe_allow_html=True)
