@@ -33,13 +33,13 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# --- B. 自動定位邏輯 (加入排序與更精細判斷) ---
+# --- B. 自動定位邏輯 ---
 if 'auto_located' not in st.session_state:
     st.session_state.auto_located = False
 
 map_center = [22.6280, 120.3014]
 map_zoom = 13
-closest_st_index = 19 # 預設 C20
+closest_st_index = 19
 user_pos = None
 
 loc = get_geolocation()
@@ -50,11 +50,8 @@ if loc:
         for st_id, coords in STATION_COORDS.items():
             dist = haversine(user_pos[0], user_pos[1], coords[0], coords[1])
             dist_results.append((st_id, dist))
-        
-        # 排序找出最接近的
         dist_results.sort(key=lambda x: x[1])
         target_id = dist_results[0][0]
-        
         map_center = STATION_COORDS[target_id]
         map_zoom = 15
         st_ids = list(STATION_COORDS.keys())
@@ -67,7 +64,7 @@ now = datetime.datetime.now(tz)
 is_running = (now.hour > 6 or (now.hour == 6 and now.minute >= 30)) and (now.hour < 22 or (now.hour == 22 and now.minute <= 30))
 time_display = now.strftime("%Y年%m月%d日 %H:%M:%S")
 
-# --- D. 字體與 CSS ---
+# --- D. 字體與 CSS (包含標題縮小與單行說明) ---
 font_path = "ZONGYOOOOOOU1.otf"
 font_css = ""
 if os.path.exists(font_path):
@@ -77,22 +74,19 @@ if os.path.exists(font_path):
         font_base64 = base64.b64encode(font_data).decode()
         font_css = f'''
         @font-face {{ font-family: 'ZongYouFont'; src: url(data:font/otf;base64,{font_base64}) format('opentype'); }}
-        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 64px; color: #a5d6a7; text-align: center; line-height: 1.05; margin-bottom: 2px; }}
-        .credit-text {{ font-family: 'ZongYouFont' !important; font-size: 18px; color: #888; text-align: center; margin-bottom: 20px; letter-spacing: 2px; }}
-        .st-label-zong {{ font-family: 'ZongYouFont' !important; font-size: 26px; color: #81c784; margin-bottom: 10px; }}
-        .green-tag-box {{ background-color: #2e7d32; color: white !important; font-size: 13px; padding: 1px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; font-family: 'ZongYouFont' !important; }}
-        .arrival-text {{ font-family: 'ZongYouFont' !important; font-size: 32px !important; line-height: 1.1; }}
+        /* 標題縮小：從 64px 降到 48px */
+        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 48px; color: #a5d6a7; text-align: center; line-height: 1.1; margin-bottom: 2px; }}
+        .credit-text {{ font-family: 'ZongYouFont' !important; font-size: 16px; color: #888; text-align: center; margin-bottom: 15px; letter-spacing: 2px; }}
+        .st-label-zong {{ font-family: 'ZongYouFont' !important; font-size: 24px; color: #81c784; margin-bottom: 8px; }}
+        .green-tag-box {{ background-color: #2e7d32; color: white !important; font-size: 12px; padding: 1px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; font-family: 'ZongYouFont' !important; }}
+        .arrival-text {{ font-family: 'ZongYouFont' !important; font-size: 28px !important; line-height: 1.1; }}
         
-        /* 底部留言板：深色背景，移除顯眼綠邊 */
-        .footer-box {{
-            background-color: #1a1d23;
-            border: 1px solid #30363d;
-            border-radius: 10px;
-            padding: 15px 20px;
-            margin-top: 12px;
-        }}
-        .footer-title {{ font-size: 1.05em; font-weight: bold; margin-bottom: 5px; color: #eee; }}
-        .footer-content {{ color: #abb2bf; line-height: 1.6; font-size: 0.9em; }}
+        /* 地圖標示縮小至單行 */
+        .legend-box {{ font-size: 13px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+        
+        .footer-box {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 10px; padding: 15px 20px; margin-top: 12px; }}
+        .footer-title {{ font-size: 1em; font-weight: bold; margin-bottom: 5px; color: #eee; }}
+        .footer-content {{ color: #abb2bf; line-height: 1.6; font-size: 0.85em; }}
         '''
     except: pass
 
@@ -104,7 +98,7 @@ st.markdown(f'''
         font-family: 'Zen Maru Gothic', sans-serif !important;
         font-weight: 500 !important;
     }}
-    .stInfo {{ background-color: #212d3d !important; color: #b0c4de !important; border: 1px solid #3d4d5e !important; border-radius: 12px !important; }}
+    .stInfo {{ background-color: #212d3d !important; color: #b0c4de !important; border: 1px solid #3d4d5e !important; border-radius: 12px !important; padding: 8px 12px !important; }}
     .paper-card {{ background-color: #1a1d23; border: 1px solid #2d333b; border-left: 5px solid #4caf50; border-radius: 8px; padding: 12px 18px; margin-bottom: 10px; }}
     
     @keyframes pulse {{
@@ -116,7 +110,7 @@ st.markdown(f'''
 </style>
 ''', unsafe_allow_html=True)
 
-# 3. 數據定義 (車站對應)
+# 3. 數據定義
 STATION_MAP = {
     "C1 籬仔內": "C1", "C2 凱旋瑞田": "C2", "C3 前鎮之星": "C3", "C4 凱旋中華": "C4", "C5 夢時代": "C5",
     "C6 經貿園區": "C6", "C7 軟體園區": "C7", "C8 高雄展覽館": "C8", "C9 旅運中心": "C9", "C10 光榮碼頭": "C10",
@@ -142,7 +136,8 @@ token = get_token()
 st.markdown('<div class="custom-title">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html=True)
 
-st.info("📍 地圖標示：🟢 順行  | 🔵 逆行 | 🔴 您目前的位置")
+# 優化：說明文字縮小並強制單行
+st.markdown('<div class="stInfo legend-box">📍 地圖標示：🟢 順行 | 🔵 逆行 | 🔴 您目前的位置</div>', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3])
 
@@ -192,7 +187,6 @@ with col_info:
 
 # --- 底部內容 ---
 st.markdown('---')
-
 st.markdown(f'''
 <div class="footer-box">
     <div class="footer-title">✍️ 作者留言：</div>
@@ -202,11 +196,11 @@ st.markdown(f'''
 </div>
 
 <div class="footer-box">
-    <div class="footer-title">📦 版本更新紀錄 (V3.1) ：</div>
+    <div class="footer-title">📦 版本更新紀錄 (V3.2) ：</div>
     <div class="footer-content">
+        • <b>視覺黃金比例</b>：微調標題字級與地圖說明大小，更適配行動裝置。<br>
         • <b>定位邏輯校正</b>：優化距離計算，提升在車站邊界時的自動判定精確度。<br>
-        • <b>介面視覺調整</b>：底部資訊欄維持深色背景，並移除顯眼的綠色側邊框。<br>
-        • <b>系統效能優化</b>：精簡程式碼結構，提升地圖載入與閃爍點渲染速度。
+        • <b>介面視覺調整</b>：底部資訊欄維持深色背景，並移除顯眼的綠色側邊框。
     </div>
 </div>
 ''', unsafe_allow_html=True)
