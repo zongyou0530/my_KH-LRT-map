@@ -16,6 +16,9 @@ tz = pytz.timezone('Asia/Taipei')
 now = datetime.datetime.now(tz)
 is_running = (now.hour > 6 or (now.hour == 6 and now.minute >= 30)) and (now.hour < 22 or (now.hour == 22 and now.minute <= 30))
 
+# 格式化日期時間字串
+time_str = now.strftime("西元%Y年%m月%d日 台灣時間 %H:%M:%S")
+
 # --- 字體載入與全域 CSS ---
 font_path = "ZONGYOOOOOOU1.otf"
 font_css = ""
@@ -57,8 +60,8 @@ if os.path.exists(font_path):
         .green-tag-box {{
             background-color: #2e7d32; 
             color: white !important; 
-            font-size: 15px; 
-            padding: 2px 10px; 
+            font-size: 13px; /* 稍微調小字級 */
+            padding: 1px 8px; /* 👈 這裡縮小了高度 (原本是 2px 10px) */
             border-radius: 4px; 
             display: inline-block; 
             margin-bottom: 4px; 
@@ -73,22 +76,19 @@ if os.path.exists(font_path):
     except:
         pass
 
-# 這裡幫你把全域改為「Zen Maru Gothic」
+# 全域 CSS
 st.markdown(f'''
 <style>
-    /* 載入 Zen Maru Gothic (提供不同字重) */
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
     
     {font_css}
 
-    /* 全域設定：強制使用 Zen Maru Gothic */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], 
     [data-testid="stMarkdownContainer"], p, span, div, select, button, label {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
         font-weight: 500 !important;
     }}
 
-    /* 圖標說明欄 (Legend Box) 改為更質感、優雅的深海藍色調 */
     .stInfo {{
         background-color: #212d3d !important; 
         color: #b0c4de !important;
@@ -96,7 +96,6 @@ st.markdown(f'''
         border-radius: 12px !important;
     }}
 
-    /* 纖薄卡片比例 */
     .paper-card {{ 
         background-color: #1a1d23; 
         border: 1px solid #2d333b; 
@@ -109,7 +108,6 @@ st.markdown(f'''
     .urgent-red {{ color: #ff5252 !important; }}
     .calm-grey {{ color: #78909c !important; }}
 
-    /* 下方資訊框 */
     .info-box {{ background-color: #161b22; border-radius: 10px; padding: 15px; margin-top: 15px; border: 1px solid #30363d; font-size: 0.9em; }}
     .update-box {{ background-color: #0d1117; border-radius: 8px; padding: 12px; font-size: 0.85em; color: #8b949e; line-height: 1.6; border: 1px solid #21262d; margin-top: 10px; }}
     
@@ -148,7 +146,6 @@ st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html
 if not is_running:
     st.warning("⚠️ 提醒：目前為非營運時段（營運時間：06:30 - 22:30）。")
 
-# 這一格變色了喔！使用了舒服的深藍灰色
 st.info("📍 地圖標示：🟢 順行  | 🔵 逆行 ")
 
 col_map, col_info = st.columns([7, 3])
@@ -185,18 +182,24 @@ with col_info:
                 st.info("⌛ 暫無列車資訊")
         except: st.error("📡 資料連線中...")
     
-    st.markdown(f'<div style="font-size: 0.8em; color: #666; margin-top:10px;">📍 地圖更新：{now.strftime("%H:%M:%S")}<br>🕒 站牌更新：{now.strftime("%H:%M:%S")}</div>', unsafe_allow_html=True)
+    # 👈 更新時間格式更改為你指定的樣式
+    st.markdown(f'''
+    <div style="font-size: 0.8em; color: #888; margin-top:10px; line-height: 1.5;">
+        📍 地圖最後更新時間：{time_str}<br>
+        🕒 站牌最後更新時間：{time_str}
+    </div>
+    ''', unsafe_allow_html=True)
 
 # 底部留言區
 st.markdown('---')
-st.markdown('<div class="info-box"><b>✍️ 作者留言：</b><br>這是一個實驗性性質專案。資料由 TDX 平台提供，僅供參考。</div>', unsafe_allow_html=True)
+st.markdown('<div class="info-box"><b>✍️ 作者留言：</b><br>各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。</div>', unsafe_allow_html=True)
 
 st.markdown(f'''
 <div class="update-box">
-    <b>📦 版本更新紀錄 (V21.0)：</b><br>
-    • <b>Zen Maru Gothic 導入</b>：換上優雅氣質的日系圓體，閱讀感更升級。<br>
-    • <b>圖標列色調優化</b>：改用沉穩的深藍灰色背景，讓標籤更清晰。<br>
-    • <b>全方位視覺平衡</b>：維持標題換行格式，細微調整間距。
+    <b>📦 版本更新紀錄 (V22.0)：</b><br>
+    • <b>標籤精緻化</b>：縮小卡片左上角綠色框框的高度，視覺更俐落。<br>
+    • <b>時間格式標準化</b>：更新時間現在顯示完整西元年月日與台灣時間。<br>
+    • <b>Zen Maru Gothic</b>：持續維持優雅的日系圓體風格。
 </div>
 ''', unsafe_allow_html=True)
 
