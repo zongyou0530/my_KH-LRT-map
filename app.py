@@ -132,7 +132,7 @@ st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html
 if not is_running:
     st.warning("⚠️ 提醒：目前為非營運時段（營運時間：06:30 - 22:30）。")
 
-st.info("📍 地圖標示：🟢 順行 (外圈) | 🔵 逆行 (內圈)")
+st.info("📍 地圖標示：🟢 順行  | 🔵 逆行 ")
 
 col_map, col_info = st.columns([7, 3])
 
@@ -176,7 +176,7 @@ st.markdown('<div class="info-box"><b>✍️ 作者留言：</b><br>這是一個
 
 st.markdown(f'''
 <div class="update-box">
-    <b>📦 版本更新紀錄 (V17.0)：</b><br>
+    <b>📦 版本更新紀錄 (V17.0)：</b> conclude by GEMINI<br>
     • <b>全域圓體回歸</b>：強制所有系統文字使用粉圓系字體 (Kiwi Maru)。<br>
     • <b>自訂字體鎖定</b>：確保標題、標籤與到站資訊維持您的 ZongYouFont。<br>
     • <b>視覺呼吸感</b>：微調標題與署名間距，不再擁擠。<br>
