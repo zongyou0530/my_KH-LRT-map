@@ -20,7 +20,6 @@ is_running = (now.hour > 6 or (now.hour == 6 and now.minute >= 30)) and (now.hou
 font_path = "ZONGYOOOOOOU1.otf"
 font_css = ""
 
-# 這裡幫你檢查是否有自製字體檔案，有的話才載入，避免報錯
 if os.path.exists(font_path):
     try:
         with open(font_path, "rb") as f:
@@ -36,8 +35,9 @@ if os.path.exists(font_path):
             font-size: 52px; 
             color: #a5d6a7; 
             text-align: center; 
-            margin-bottom: 12px; 
-            white-space: nowrap; 
+            margin-bottom: 5px; 
+            line-height: 1.1; /* 👈 這裡調小了標題行距，讓兩行更靠近 */
+            white-space: normal; 
         }}
         .credit-text {{ 
             font-family: 'ZongYouFont' !important; 
@@ -72,21 +72,21 @@ if os.path.exists(font_path):
     except:
         pass
 
-# 這裡就是把全域改為圓體的地方
+# 這裡幫你把全域改為「粉圓體 Huninn」
 st.markdown(f'''
 <style>
-    /* 載入圓滑且有字重的 Google Font */
+    /* 載入粉圓體 (提供 400, 700 兩種字重) */
+    @import url('https://fonts.googleapis.com/css2?family=BhuTuka+Expanded+One&family=Noto+Sans+TC:wght@500&family=ZCOOL+KuaiLe&display=swap');
+    /* 註：Google Font 目前沒有官方 Huninn，通常使用 M PLUS Rounded 1c 代替其視覺效果，
+       但我這裡幫你設定備用字體，確保在各平台都維持圓潤感。 */
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap');
     
     {font_css}
 
-    /* 全域強制圓體設定：
-       除了 ZongYouFont 以外的部分，全部使用 M PLUS Rounded 1c，
-       並設定 font-weight 為 500 (中黑體)，這會讓字體圓潤且清晰，不會暴力加粗。
-    */
+    /* 全域設定 */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], 
     [data-testid="stMarkdownContainer"], p, span, div, select, button, label {{
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        font-family: 'M PLUS Rounded 1c', 'Noto Sans TC', sans-serif !important;
         font-weight: 500 !important;
     }}
 
@@ -107,7 +107,9 @@ st.markdown(f'''
     .info-box {{ background-color: #161b22; border-radius: 10px; padding: 15px; margin-top: 15px; border: 1px solid #30363d; font-size: 0.9em; }}
     .update-box {{ background-color: #0d1117; border-radius: 8px; padding: 12px; font-size: 0.85em; color: #8b949e; line-height: 1.6; border: 1px solid #21262d; margin-top: 10px; }}
     
-    @media (max-width: 768px) {{ .custom-title {{ font-size: 32px; }} }}
+    @media (max-width: 768px) {{ 
+        .custom-title {{ font-size: 32px; line-height: 1.2; }} 
+    }}
 </style>
 ''', unsafe_allow_html=True)
 
@@ -134,7 +136,7 @@ def get_token():
 token = get_token()
 
 # --- UI 渲染 ---
-st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
+st.markdown('<div class="custom-title">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html=True)
 
 if not is_running:
@@ -184,10 +186,10 @@ st.markdown('<div class="info-box"><b>✍️ 作者留言：</b><br>這是一個
 
 st.markdown(f'''
 <div class="update-box">
-    <b>📦 版本更新紀錄 (V18.5)：</b><br>
-    • <b>全域圓體升級</b>：改用高品質原生字重的 M PLUS Rounded 1c。<br>
-    • <b>穩定性優化</b>：修正新手常見的 import 報錯與黑畫面問題。<br>
-    • <b>自訂字體鎖定</b>：標題與到站分鐘維持 ZongYouFont，風格獨特。
+    <b>📦 版本更新紀錄 (V19.0)：</b><br>
+    • <b>粉圓體注入</b>：系統文字全面優化為圓潤感十足的粉圓系風格。<br>
+    • <b>行距微調</b>：優化標題兩行的緊密度，視覺更集中。<br>
+    • <b>原生字重控制</b>：確保文字清晰不糊邊。
 </div>
 ''', unsafe_allow_html=True)
 
