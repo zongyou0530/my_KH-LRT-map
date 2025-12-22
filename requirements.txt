@@ -2,3 +2,4 @@ requests
 folium
 streamlit
 streamlit-folium
+streamlit-js-eval
