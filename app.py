@@ -11,7 +11,7 @@ import os
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# --- 時間與狀態邏輯 ---
+# --- 時間邏輯 ---
 tz = pytz.timezone('Asia/Taipei')
 now = datetime.datetime.now(tz)
 is_running = (now.hour > 6 or (now.hour == 6 and now.minute >= 30)) and (now.hour < 22 or (now.hour == 22 and now.minute <= 30))
@@ -27,65 +27,75 @@ if os.path.exists(font_path):
         font_css = f'''
         @font-face {{ font-family: 'ZongYouFont'; src: url(data:font/otf;base64,{font_base64}) format('opentype'); }}
         .zong-font {{ font-family: 'ZongYouFont' !important; }}
-        .custom-title {{ font-family: 'ZongYouFont' !important; font-size: 52px; color: #a5d6a7; text-align: center; margin-bottom: 5px; }}
-        .credit-text {{ font-family: 'ZongYouFont' !important; font-size: 14px; color: #666; text-align: center; margin-bottom: 15px; letter-spacing: 2px; }}
+        /* 標題不換行處理 */
+        .custom-title {{ 
+            font-family: 'ZongYouFont' !important; 
+            font-size: 42px; 
+            color: #a5d6a7; 
+            text-align: center; 
+            margin-bottom: 0px;
+            white-space: nowrap; 
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+        .credit-text {{ font-family: 'ZongYouFont' !important; font-size: 14px; color: #666; text-align: center; margin-bottom: 10px; letter-spacing: 2px; }}
         '''
     except: pass
 
-# 2. 注入 CSS (極簡紙片卡片與指定字體)
+# 2. 注入 CSS (優化標籤大小與卡片厚度)
 st.markdown(f'''
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&display=swap');
     {font_css}
 
-    /* 全域圓體 */
+    /* 全域預設圓體 */
     html, body, [data-testid="stAppViewContainer"], p, div {{
         font-family: 'Kiwi Maru', serif;
-        color: #fafafa !important;
     }}
 
-    /* 輕量化紙片卡片 */
+    /* 極簡纖薄卡片 */
     .paper-card {{ 
         background-color: #1a1d23; 
         border: 1px solid #2d333b;
-        border-left: 4px solid #4caf50;
-        border-radius: 6px; 
-        padding: 6px 12px; 
-        margin-bottom: 5px;
+        border-left: 5px solid #4caf50;
+        border-radius: 8px; 
+        padding: 5px 12px; /* 極小化內距 */
+        margin-bottom: 6px;
     }}
     
-    /* 綠色框框套用自定義字體 */
+    /* 放大後的綠色標籤文字 */
     .green-tag-box {{
         background-color: #2e7d32;
         color: #ffffff !important;
-        font-size: 0.7em;
-        padding: 2px 8px;
-        border-radius: 3px;
+        font-size: 0.9em; /* 文字放大 */
+        padding: 3px 10px;
+        border-radius: 5px;
         display: inline-block;
-        margin-bottom: 3px;
+        margin-bottom: 4px;
         font-family: 'ZongYouFont' !important;
     }}
 
-    /* 到站文字基礎樣式 */
     .arrival-text {{
         font-family: 'ZongYouFont' !important;
-        font-size: 1.8em !important;
-        line-height: 1.1;
+        font-size: 2.0em !important;
+        line-height: 1.0;
+        margin-top: 2px;
     }}
 
-    /* 顏色邏輯：亮紅與深灰 */
+    /* 顏色邏輯 */
     .urgent-red {{ color: #ff5252 !important; }}
     .calm-grey {{ color: #78909c !important; }}
 
-    /* 下拉選單標籤樣式 */
     .st-label-zong {{ font-family: 'ZongYouFont' !important; font-size: 24px; color: #81c784; margin-bottom: 5px; }}
-
-    /* 鎖死鍵盤 */
-    div[data-testid="stSelectbox"] input {{ pointer-events: none !important; }}
+    
+    /* 手機端標題縮小以防換行 */
+    @media (max-width: 768px) {{
+        .custom-title {{ font-size: 28px; }}
+    }}
 </style>
 ''', unsafe_allow_html=True)
 
-# 3. 定義數據 (確保不再出現 NameError)
+# 3. 數據定義 (維持穩定性)
 STATION_MAP = {
     "C1 籬仔內": "C1", "C2 凱旋瑞田": "C2", "C3 前鎮之星": "C3", "C4 凱旋中華": "C4", "C5 夢時代": "C5",
     "C6 經貿園區": "C6", "C7 軟體園區": "C7", "C8 高雄展覽館": "C8", "C9 旅運中心": "C9", "C10 光榮碼頭": "C10",
@@ -107,14 +117,13 @@ def get_token():
 
 token = get_token()
 
-# --- UI 渲染 ---
+# --- UI 開始 ---
 st.markdown('<div class="custom-title">高雄輕軌即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 標準地圖底圖，可看清軌道
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
     if token and is_running:
         try:
@@ -127,7 +136,6 @@ with col_map:
     folium_static(m, height=450, width=900)
 
 with col_info:
-    # 選擇車站標題
     st.markdown('<div class="st-label-zong">🚉 選擇車站</div>', unsafe_allow_html=True)
     sel_st_label = st.selectbox("Station", list(STATION_MAP.keys()), index=19, label_visibility="collapsed")
     target_id = STATION_MAP[sel_st_label]
@@ -140,8 +148,6 @@ with col_info:
                 matched.sort(key=lambda x: x.get('EstimateTime', 999))
                 for item in matched:
                     est = int(item.get('EstimateTime', 0))
-                    
-                    # 顏色與字體邏輯
                     color_class = "urgent-red" if est <= 2 else "calm-grey"
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
                     
@@ -152,9 +158,8 @@ with col_info:
                     </div>''', unsafe_allow_html=True)
             else:
                 st.info("⌛ 暫無列車資訊")
-        except: st.error("📡 資料連線失敗")
+        except: st.error("📡 資料連線中")
     
-    # 兩行時間顯示
     st.markdown(f'''
         <div style="margin-top:10px; border-top: 1px solid #333; padding-top: 5px;">
             <div style="font-size: 0.75em; color: #666;">📍 地圖更新：{now.strftime("%H:%M:%S")}</div>
