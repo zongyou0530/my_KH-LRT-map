@@ -7,14 +7,13 @@ import pytz
 import time
 import base64
 import os
-import math # 用於距離計算
-from streamlit_js_eval import get_geolocation # 👈 新增定位組件
+import math
+from streamlit_js_eval import get_geolocation
 
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# --- A. 車站座標數據 (用於計算最近點) ---
-# 包含所有 C1-C37 的約略座標
+# --- A. 距離計算與車站座標 ---
 STATION_COORDS = {
     "C1": [22.6015, 120.3204], "C2": [22.6026, 120.3168], "C3": [22.6025, 120.3117], "C4": [22.6033, 120.3060],
     "C5": [22.6000, 120.3061], "C6": [22.6052, 120.3021], "C7": [22.6075, 120.2989], "C8": [22.6105, 120.2982],
@@ -29,50 +28,43 @@ STATION_COORDS = {
 }
 
 def haversine(lat1, lon1, lat2, lon2):
-    R = 6371 # 公里
+    R = 6371
     dlat, dlon = math.radians(lat2-lat1), math.radians(lon2-lon1)
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 # --- B. 自動定位邏輯 ---
-# 初始化 Session State 以避免重複定位導致選單跳掉
 if 'auto_located' not in st.session_state:
     st.session_state.auto_located = False
 
-# 預設地圖參數
 map_center = [22.6280, 120.3014]
 map_zoom = 13
-closest_st_index = 19 # 預設 C20
+closest_st_index = 19
+user_pos = None
 
-# 獲取地理位置 (僅在剛進入網頁或未成功定位過時)
-if not st.session_state.auto_located:
-    loc = get_geolocation()
-    if loc:
-        u_lat, u_lon = loc['coords']['latitude'], loc['coords']['longitude']
-        # 找最近車站
+loc = get_geolocation()
+if loc:
+    user_pos = [loc['coords']['latitude'], loc['coords']['longitude']]
+    if not st.session_state.auto_located:
         min_dist = float('inf')
         target_id = "C20"
         for st_id, coords in STATION_COORDS.items():
-            dist = haversine(u_lat, u_lon, coords[0], coords[1])
+            dist = haversine(user_pos[0], user_pos[1], coords[0], coords[1])
             if dist < min_dist:
                 min_dist, target_id = dist, st_id
         
-        # 更新顯示參數
         map_center = STATION_COORDS[target_id]
-        map_zoom = 15 # 👈 稍微放大
-        
-        # 尋找對應的 Selectbox index
-        st_ids = ["C1","C2","C3","C4","C5","C6","C7","C8","C9","C10","C11","C12","C13","C14","C15","C16","C17","C18","C19","C20","C21A","C21","C22","C23","C24","C25","C26","C27","C28","C29","C30","C31","C32","C33","C34","C35","C36","C37"]
+        map_zoom = 15
+        st_ids = list(STATION_COORDS.keys())
         closest_st_index = st_ids.index(target_id)
-        st.session_state.auto_located = True # 鎖定，刷新時不再跳轉
+        st.session_state.auto_located = True
 
-# --- 時間與營運邏輯 ---
+# --- C. 時間與字體 (延用) ---
 tz = pytz.timezone('Asia/Taipei')
 now = datetime.datetime.now(tz)
 is_running = (now.hour > 6 or (now.hour == 6 and now.minute >= 30)) and (now.hour < 22 or (now.hour == 22 and now.minute <= 30))
 time_str = now.strftime("西元%Y年%m月%d日 台灣時間 %H:%M:%S")
 
-# --- 字體載入與全域 CSS (延用 V22.0) ---
 font_path = "ZONGYOOOOOOU1.otf"
 font_css = ""
 if os.path.exists(font_path):
@@ -89,6 +81,7 @@ if os.path.exists(font_path):
         '''
     except: pass
 
+# --- D. 增加「閃爍紅點」動畫 CSS ---
 st.markdown(f'''
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
@@ -99,15 +92,23 @@ st.markdown(f'''
     }}
     .stInfo {{ background-color: #212d3d !important; color: #b0c4de !important; border: 1px solid #3d4d5e !important; border-radius: 12px !important; }}
     .paper-card {{ background-color: #1a1d23; border: 1px solid #2d333b; border-left: 5px solid #4caf50; border-radius: 8px; padding: 8px 15px; margin-bottom: 8px; }}
-    .urgent-red {{ color: #ff5252 !important; }}
-    .calm-grey {{ color: #78909c !important; }}
-    .info-box {{ background-color: #161b22; border-radius: 10px; padding: 15px; margin-top: 15px; border: 1px solid #30363d; font-size: 0.9em; }}
-    .update-box {{ background-color: #0d1117; border-radius: 8px; padding: 12px; font-size: 0.85em; color: #8b949e; line-height: 1.6; border: 1px solid #21262d; margin-top: 10px; }}
-    @media (max-width: 768px) {{ .custom-title {{ font-size: 42px; line-height: 1.1; }} }}
+    
+    /* 閃爍圓圈動畫效果 */
+    @keyframes pulse {{
+        0% {{ transform: scale(0.1); opacity: 0; }}
+        50% {{ opacity: 0.5; }}
+        100% {{ transform: scale(1.2); opacity: 0; }}
+    }}
+    .pulse-circle {{
+        border: 4px solid #ff5252;
+        border-radius: 50%;
+        background-color: transparent;
+        animation: pulse 2s infinite ease-out;
+    }}
 </style>
 ''', unsafe_allow_html=True)
 
-# 3. 數據定義
+# 3. 數據定義 (延用)
 STATION_MAP = {
     "C1 籬仔內": "C1", "C2 凱旋瑞田": "C2", "C3 前鎮之星": "C3", "C4 凱旋中華": "C4", "C5 夢時代": "C5",
     "C6 經貿園區": "C6", "C7 軟體園區": "C7", "C8 高雄展覽館": "C8", "C9 旅運中心": "C9", "C10 光榮碼頭": "C10",
@@ -133,16 +134,28 @@ token = get_token()
 st.markdown('<div class="custom-title">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div style="font-family: \'ZongYouFont\' !important; font-size: 18px; color: #888; text-align: center; margin-bottom: 20px; letter-spacing: 2px;">zongyou x gemini</div>', unsafe_allow_html=True)
 
-if not is_running:
-    st.warning("⚠️ 提醒：目前為非營運時段（營運時間：06:30 - 22:30）。")
-
-st.info("📍 地圖標示：🟢 順行  | 🔵 逆行 ")
+st.info("📍 地圖標示：🟢 順行  | 🔵 逆行 | 🔴 您目前的位置")
 
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 👈 使用動態計算出的 map_center 和 map_zoom
     m = folium.Map(location=map_center, zoom_start=map_zoom)
+    
+    # 👈 繪製使用者閃爍位置 (如果有位置資訊)
+    if user_pos:
+        # 1. 核心紅點
+        folium.CircleMarker(
+            location=user_pos, radius=8, color='#ff5252', fill=True, fill_color='#ff5252', fill_opacity=0.9,
+            popup="您的精確位置"
+        ).add_to(m)
+        
+        # 2. CSS 閃爍外圈 (利用自定義 HTML)
+        icon_html = '<div class="pulse-circle" style="width: 40px; height: 40px; margin-left: -20px; margin-top: -20px;"></div>'
+        folium.Marker(
+            location=user_pos,
+            icon=folium.DivIcon(html=icon_html)
+        ).add_to(m)
+
     if token and is_running:
         try:
             live_pos = requests.get('https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON', headers={'Authorization': f'Bearer {token}'}).json()
@@ -155,7 +168,6 @@ with col_map:
 
 with col_info:
     st.markdown('<div class="st-label-zong">🚉 輕軌車站即時站牌</div>', unsafe_allow_html=True)
-    # 👈 index 使用動態計算出的最近站點
     sel_st_label = st.selectbox("Station", list(STATION_MAP.keys()), index=closest_st_index, label_visibility="collapsed")
     target_id = STATION_MAP[sel_st_label]
 
@@ -174,10 +186,12 @@ with col_info:
                 st.info("⌛ 暫無列車資訊")
         except: st.error("📡 資料連線中...")
     
+    # 底部時間與偵測到的位置
     st.markdown(f'''
     <div style="font-size: 0.8em; color: #888; margin-top:10px; line-height: 1.5;">
         📍 地圖最後更新時間：{time_str}<br>
-        🕒 站牌最後更新時間：{time_str}
+        🕒 站牌最後更新時間：{time_str}<br>
+        🛰️ 偵測座標：{user_pos if user_pos else "定位中..."}
     </div>
     ''', unsafe_allow_html=True)
 
@@ -187,10 +201,10 @@ st.markdown('<div class="info-box"><b>✍️ 作者留言：</b><br>各位親朋
 
 st.markdown(f'''
 <div class="update-box">
-    <b>📦 版本更新紀錄 (V23.0)：</b><br>
-    • <b>智慧定位導航</b>：首頁加載時自動獲取位置，並將地圖移至最近的車站。<br>
-    • <b>站牌聯動技術</b>：右側站牌選單會隨定位自動切換，無需手動選擇。<br>
-    • <b>視覺縮放優化</b>：定位後地圖自動放大至 15 級，視野更精準。
+    <b>📦 版本更新紀錄 (V24.0)：</b><br>
+    • <b>雷達定位標示</b>：地圖新增紅色閃爍點，即時顯示您的瀏覽器定位位置。<br>
+    • <b>座標資訊透明化</b>：右側資訊欄同步顯示偵測到的經緯度。<br>
+    • <b>使用者反饋優化</b>：便於比對實際位置與車站系統數據的誤差。
 </div>
 ''', unsafe_allow_html=True)
 
