@@ -58,11 +58,10 @@ if loc:
         closest_st_index = st_ids.index(target_id)
         st.session_state.auto_located = True
 
-# --- C. 時間處理 (精簡格式) ---
+# --- C. 時間處理 (2025年12月22日 17:23:30) ---
 tz = pytz.timezone('Asia/Taipei')
 now = datetime.datetime.now(tz)
 is_running = (now.hour > 6 or (now.hour == 6 and now.minute >= 30)) and (now.hour < 22 or (now.hour == 22 and now.minute <= 30))
-# 修正要求 2: 移除「西元」與「台灣時間」
 time_display = now.strftime("%Y年%m月%d日 %H:%M:%S")
 
 # --- D. 字體與 CSS ---
@@ -80,6 +79,8 @@ if os.path.exists(font_path):
         .st-label-zong {{ font-family: 'ZongYouFont' !important; font-size: 26px; color: #81c784; margin-bottom: 10px; }}
         .green-tag-box {{ background-color: #2e7d32; color: white !important; font-size: 13px; padding: 1px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; font-family: 'ZongYouFont' !important; }}
         .arrival-text {{ font-family: 'ZongYouFont' !important; font-size: 32px !important; line-height: 1.1; }}
+        .simple-footer-title {{ font-size: 1.1em; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }}
+        .simple-footer-content {{ color: #ccc; line-height: 1.6; font-size: 0.95em; }}
         '''
     except: pass
 
@@ -127,7 +128,6 @@ token = get_token()
 
 # --- UI 渲染 ---
 st.markdown('<div class="custom-title">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
-# 修正要求 1: 名字套用自製字體
 st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html=True)
 
 st.info("📍 地圖標示：🟢 順行  | 🔵 逆行 | 🔴 您目前的位置")
@@ -178,26 +178,26 @@ with col_info:
     </div>
     ''', unsafe_allow_html=True)
 
-# 修正要求 3: 回復漂亮的留言板格式
+# --- 底部留言區與更新紀錄 (改回簡潔格式) ---
 st.markdown('---')
-st.markdown(f'''
-<div class="paper-card">
-    <div class="green-tag-box">✍️ 作者留言</div>
-    <div style="color: #ccc; font-size: 15px; margin-top: 8px;">
-        各位親朋好友們，拜託幫我看看準不準，不準的話可以搜尋 ig 跟我講謝謝。<br>
-        資料由 TDX 平台提供，僅供參考。
-    </div>
+
+# 作者留言
+st.markdown('''
+<div class="simple-footer-title">✍️ 作者留言：</div>
+<div class="simple-footer-content">
+    各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。
 </div>
 ''', unsafe_allow_html=True)
 
-st.markdown(f'''
-<div class="paper-card" style="border-left: 5px solid #2196f3;">
-    <div class="green-tag-box" style="background-color: #1976d2;">📦 版本紀錄 (V3.0)</div>
-    <div style="color: #ccc; font-size: 14px; margin-top: 8px; line-height: 1.6;">
-        • <b>智慧定位核心</b>：首頁自動計算最近車站，地圖中心自動跳轉並放大。<br>
-        • <b>雷達紅點標示</b>：新增紅色閃爍點，用於校正實際位置與系統誤差。<br>
-        • <b>UI 介面優化</b>：精簡時間顯示，修復標題字體，回復經典卡片式風格。
-    </div>
+st.write("") # 間距
+
+# 版本紀錄
+st.markdown('''
+<div class="simple-footer-title">📦 版本更新紀錄 (V3.0) ：</div>
+<div class="simple-footer-content">
+    • <b>智慧定位核心</b>：首頁自動計算最近車站，地圖中心自動跳轉並放大。<br>
+    • <b>雷達紅點標示</b>：新增紅色閃爍點，用於校正實際位置與系統誤差。<br>
+    • <b>UI 介面優化</b>：精簡時間顯示，標題字體修正，回歸純淨簡潔的頁尾風格。
 </div>
 ''', unsafe_allow_html=True)
 
