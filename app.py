@@ -79,8 +79,17 @@ if os.path.exists(font_path):
         .st-label-zong {{ font-family: 'ZongYouFont' !important; font-size: 26px; color: #81c784; margin-bottom: 10px; }}
         .green-tag-box {{ background-color: #2e7d32; color: white !important; font-size: 13px; padding: 1px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; font-family: 'ZongYouFont' !important; }}
         .arrival-text {{ font-family: 'ZongYouFont' !important; font-size: 32px !important; line-height: 1.1; }}
-        .simple-footer-title {{ font-size: 1.1em; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }}
-        .simple-footer-content {{ color: #ccc; line-height: 1.6; font-size: 0.95em; }}
+        
+        /* 底部留言板優化：深色背景，無鮮豔邊框 */
+        .footer-box {{
+            background-color: #1a1d23;
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-top: 12px;
+        }}
+        .footer-title {{ font-size: 1.05em; font-weight: bold; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; color: #eee; }}
+        .footer-content {{ color: #abb2bf; line-height: 1.6; font-size: 0.9em; }}
         '''
     except: pass
 
@@ -178,26 +187,24 @@ with col_info:
     </div>
     ''', unsafe_allow_html=True)
 
-# --- 底部留言區與更新紀錄 (改回簡潔格式) ---
+# --- 底部內容：保留深色區塊，移除鮮豔邊框 ---
 st.markdown('---')
 
-# 作者留言
-st.markdown('''
-<div class="simple-footer-title">✍️ 作者留言：</div>
-<div class="simple-footer-content">
-    各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。
+st.markdown(f'''
+<div class="footer-box">
+    <div class="footer-title">✍️ 作者留言：</div>
+    <div class="footer-content">
+        各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。
+    </div>
 </div>
-''', unsafe_allow_html=True)
 
-st.write("") # 間距
-
-# 版本紀錄
-st.markdown('''
-<div class="simple-footer-title">📦 版本更新紀錄 (V3.0) ：</div>
-<div class="simple-footer-content">
-    • <b>智慧定位核心</b>：首頁自動計算最近車站，地圖中心自動跳轉並放大。<br>
-    • <b>雷達紅點標示</b>：新增紅色閃爍點，用於校正實際位置與系統誤差。<br>
-    • <b>UI 介面優化</b>：精簡時間顯示，標題字體修正，回歸純淨簡潔的頁尾風格。
+<div class="footer-box">
+    <div class="footer-title">📦 版本更新紀錄 (V3.0) ：</div>
+    <div class="footer-content">
+        • <b>智慧定位核心</b>：首頁自動計算最近車站，地圖中心自動跳轉並放大。<br>
+        • <b>雷達紅點標示</b>：新增紅色閃爍點，用於校正實際位置與系統誤差。<br>
+        • <b>UI 介面優化</b>：精簡時間顯示，標題字體修正，採用低調深色背景區塊。
+    </div>
 </div>
 ''', unsafe_allow_html=True)
 
