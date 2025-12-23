@@ -205,7 +205,7 @@ st.markdown(f'''
 <div class="footer-box">
     <div class="footer-title">✍️ 作者留言：</div>
     <div class="footer-content">
-        各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。
+        我只有TDX免費會員，每個月呼叫次數有限，拜託不要一直開著😭各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。
     </div>
 </div>
 
