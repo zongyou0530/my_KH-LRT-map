@@ -91,13 +91,13 @@ if os.path.exists(font_path):
             background-color: #2c1616;
             border: 2px solid #ff5252;
             color: #ffbaba;
-            padding: 15px;
+            padding: 20px;
             border-radius: 12px;
             text-align: center;
             font-family: 'ZongYouFont' !important;
             font-size: 20px;
             margin: 15px 0;
-            line-height: 1.5;
+            line-height: 1.6;
             animation: blink-red 2s infinite;
         }}
 
@@ -129,7 +129,7 @@ st.markdown(f'''
 </style>
 ''', unsafe_allow_html=True)
 
-# 3. 數據與 Token
+# 3. 數據與 Token 處理
 STATION_MAP = {
     "C1 籬仔內": "C1", "C2 凱旋瑞田": "C2", "C3 前鎮之星": "C3", "C4 凱旋中華": "C4", "C5 夢時代": "C5",
     "C6 經貿園區": "C6", "C7 軟體園區": "C7", "C8 高雄展覽館": "C8", "C9 旅運中心": "C9", "C10 光榮碼頭": "C10",
@@ -151,25 +151,42 @@ def get_token():
 
 token = get_token()
 
-# --- 檢測點數是否耗盡 ---
+# --- 重要：強效點數檢測邏輯 ---
 quota_exceeded = False
 if token and is_running:
     try:
-        # 發送一個極輕量的請求測試 API 狀態
         test_url = 'https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$top=1&$format=JSON'
         test_res = requests.get(test_url, headers={'Authorization': f'Bearer {token}'}, timeout=5)
-        if test_res.status_code == 401 or test_res.status_code == 429:
+        
+        # 1. 檢查狀態碼
+        if test_res.status_code in [401, 403, 429]:
             quota_exceeded = True
+        else:
+            try:
+                # 2. 檢查 JSON 內容是否包含錯誤訊息 (TDX 常用格式)
+                data = test_res.json()
+                if isinstance(data, dict) and ("Message" in data or "message" in data):
+                    quota_exceeded = True
+            except:
+                # 3. 如果無法解析為 JSON，通常代表回傳了 HTML 錯誤頁面
+                quota_exceeded = True
     except:
-        pass
+        # 連線問題也列為資料不可得
+        quota_exceeded = True
 
 # --- UI 渲染 ---
 st.markdown('<div class="custom-title">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="credit-text">zongyou x gemini</div>', unsafe_allow_html=True)
 
-# 如果點數耗盡，在大標題下方顯示閃爍紅框
+# 閃爍通知
 if quota_exceeded:
-    st.markdown('<div class="quota-exceeded-box">因訪問人數太多 我這個月TDX的免費點數已耗盡 請下個月再來😭</div>', unsafe_allow_html=True)
+    st.markdown('''
+        <div class="quota-exceeded-box">
+            因訪問人數太多<br>
+            我這個月TDX的免費點數已耗盡<br>
+            請下個月再來 😭
+        </div>
+    ''', unsafe_allow_html=True)
 
 st.markdown('<div class="stInfo legend-box">🟢順行 | 🔵逆行 | 🔴您目前位置</div>', unsafe_allow_html=True)
 
@@ -181,14 +198,15 @@ with col_map:
         folium.CircleMarker(location=user_pos, radius=8, color='#ff5252', fill=True, fill_color='#ff5252', fill_opacity=0.9).add_to(m)
         folium.Marker(location=user_pos, icon=folium.DivIcon(html='<div class="pulse-circle" style="width: 40px; height: 40px; margin-left: -20px; margin-top: -20px;"></div>')).add_to(m)
 
-    # 只有在點數未耗盡時才抓取地圖點位
     if token and is_running and not quota_exceeded:
         try:
-            live_pos = requests.get('https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON', headers={'Authorization': f'Bearer {token}'}).json()
-            for t in live_pos.get('LivePositions', []):
-                d_color = 'green' if t.get('Direction') == 0 else 'blue'
-                folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], 
-                              icon=folium.Icon(color=d_color, icon='train', prefix='fa')).add_to(m)
+            live_pos_resp = requests.get('https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON', headers={'Authorization': f'Bearer {token}'})
+            if live_pos_resp.status_code == 200:
+                live_pos = live_pos_resp.json()
+                for t in live_pos.get('LivePositions', []):
+                    d_color = 'green' if t.get('Direction') == 0 else 'blue'
+                    folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], 
+                                  icon=folium.Icon(color=d_color, icon='train', prefix='fa')).add_to(m)
         except: pass
     folium_static(m, height=420, width=900)
 
@@ -214,8 +232,6 @@ with col_info:
             else:
                 st.error("📡 資料連線中...")
         except: st.error("📡 資料連線中...")
-    elif quota_exceeded:
-        st.warning("點數已用盡，暫停顯示站牌")
     
     st.markdown(f'''
     <div style="font-size: 0.8em; color: #888; margin-top:10px; line-height: 1.5;">
@@ -235,11 +251,11 @@ st.markdown(f'''
 </div>
 
 <div class="footer-box">
-    <div class="footer-title">📦 版本更新紀錄 (V3.5) ：</div>
+    <div class="footer-title">📦 版本更新紀錄 (V3.6) ：</div>
     <div class="footer-content-std" style="color: #abb2bf; line-height: 1.6; font-size: 0.85em;">
-        • <b>流量監控強化</b>：新增點數耗盡偵測與自動提醒功能。<br>
-        • <b>視覺動態優化</b>：導入「點數乾涸」警告閃爍紅框。<br>
-        • <b>系統穩定性</b>：防止 API 失敗導致的頁面崩潰。
+        • <b>API 容錯機制</b>：修正了點數用盡時無法偵測的問題，新增三重攔截邏輯。<br>
+        • <b>視覺提示</b>：當資料無法獲取時，自動觸發呼吸燈閃爍警告。<br>
+        • <b>穩定性提升</b>：優化資料解析流程，避免 JSON 解析錯誤導致的白屏。
     </div>
 </div>
 ''', unsafe_allow_html=True)
