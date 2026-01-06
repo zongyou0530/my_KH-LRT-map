@@ -13,7 +13,7 @@ from streamlit_js_eval import get_geolocation
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide")
 
-# --- A. 字體與車站數據 ---
+# --- A. 字體與數據準備 ---
 font_path = "ZONGYOOOOOOU1.otf"
 font_css = ""
 if os.path.exists(font_path):
@@ -34,7 +34,7 @@ STATION_COORDS = {
     "C27 鼎山街": [22.6515, 120.3205], "C28 高雄高工": [22.6465, 120.3235], "C29 樹德家商": [22.6415, 120.3275], 
     "C30 科工館": [22.6365, 120.3305], "C31 聖功醫院": [22.6315, 120.3315], "C32 凱旋公園": [22.6265, 120.3305], 
     "C33 衛生局": [22.6222, 120.3285], "C34 五權國小": [22.6175, 120.3275], "C35 凱旋武昌": [22.6135, 120.3275], 
-    "C36 凱旋二聖": [22.6085, 120.3265], "C37 輕軌機廠": [22.6045, 120.3245]
+    "C36 凱旋二 二聖": [22.6085, 120.3265], "C37 輕軌機廠": [22.6045, 120.3245]
 }
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -43,17 +43,18 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# --- B. 樣式修復 ---
+# --- B. CSS 深度修復 (卡片與字體) ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
     {font_css}
     
+    /* 1. 基礎設定：全域圓體 */
     html, body, [data-testid="stAppViewContainer"], p, span, label, div {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
     }}
 
-    /* 1. 標題修復：禁止換行，自動縮放 */
+    /* 2. 手寫體分配：標題、留言、圖標說明、到站數字 */
     .custom-title {{
         font-family: 'HandWrite' !important;
         font-size: clamp(28px, 7vw, 44px);
@@ -63,22 +64,33 @@ st.markdown(f"""
         margin: 10px 0;
     }}
 
-    /* 2. 圖標說明字體修復 */
-    .legend-box {{ 
-        font-family: 'Zen Maru Gothic' !important;
-        background-color: #212d3d; border-radius: 10px; padding: 10px; margin-bottom: 15px; 
-        display: flex; justify-content: center; gap: 15px; font-size: 14px; 
-    }}
-
+    .hand-font {{ font-family: 'HandWrite' !important; }}
+    
     .board-header {{ font-family: 'HandWrite' !important; font-size: 28px; color: #81c784; margin-bottom: 10px; }}
     
-    /* 4. 卡片標籤字體修復 */
-    .arrival-label {{ font-family: 'HandWrite' !important; color: #4caf50; font-size: 14px; }}
-    .arrival-time {{ font-family: 'HandWrite' !important; font-size: 28px; color: #ffffff; }}
+    .legend-box {{ 
+        font-family: 'HandWrite' !important; 
+        background-color: #212d3d; border-radius: 10px; padding: 10px; margin-bottom: 15px; 
+        display: flex; justify-content: center; gap: 15px; font-size: 16px; 
+    }}
 
-    .author-text {{ font-family: 'HandWrite' !important; font-size: 1.25em; color: #abb2bf; }}
+    /* 3. 卡片樣式修復 */
+    .paper-card {{ 
+        background-color: #1a1d23; 
+        border-left: 5px solid #4caf50; 
+        padding: 12px; 
+        margin-bottom: 10px; 
+        border-radius: 8px; 
+    }}
+    
+    .arrival-label {{ font-family: 'HandWrite' !important; color: #4caf50; font-size: 14px; margin-bottom: 5px; }}
+    .arrival-time {{ font-family: 'HandWrite' !important; font-size: 32px; color: #ffffff; line-height: 1.2; }}
 
-    /* 定位水波紋：絲滑廣播感 */
+    /* 4. 作者留言 */
+    .author-box {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 12px; padding: 18px; margin-top: 15px; }}
+    .author-msg {{ font-family: 'HandWrite' !important; font-size: 1.25em; color: #abb2bf; line-height: 1.6; }}
+
+    /* 5. 水波紋定位動畫 */
     .pulse {{
         width: 15px; height: 15px; background: #ff5252; border-radius: 50%;
         position: relative; box-shadow: 0 0 10px #ff5252;
@@ -95,9 +107,9 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- C. 自動定位車站邏輯 ---
-if 'nearest_st_idx' not in st.session_state:
-    st.session_state.nearest_st_idx = 0
+# --- C. 自動車站定位與資料抓取 ---
+if 'nearest_idx' not in st.session_state:
+    st.session_state.nearest_idx = 0
 
 user_pos = None
 loc = get_geolocation()
@@ -107,10 +119,9 @@ if loc:
     dists = []
     for i, (name, coord) in enumerate(STATION_COORDS.items()):
         dists.append((i, haversine(user_pos[0], user_pos[1], coord[0], coord[1])))
-    st.session_state.nearest_st_idx = min(dists, key=lambda x: x[1])[0]
+    st.session_state.nearest_idx = min(dists, key=lambda x: x[1])[0]
 
-# --- D. 數據抓取 (延續 V4.3 暴力刷新) ---
-def get_tdx():
+def get_fresh_tdx():
     try:
         cid = st.secrets.get("TD_ID_NEW") or st.secrets.get("TD_ID")
         csk = st.secrets.get("TD_SECRET_NEW") or st.secrets.get("TD_SECRET")
@@ -122,9 +133,9 @@ def get_tdx():
         return pos, tk
     except: return None, None
 
-live_pos, token = get_tdx()
+live_pos, token = get_fresh_tdx()
 
-# --- E. UI 渲染 ---
+# --- D. 頁面內容渲染 ---
 st.markdown('<div class="custom-title">高雄輕軌 即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-box">🟢順行 | 🔵逆行 | 🔴目前位置</div>', unsafe_allow_html=True)
 
@@ -133,11 +144,9 @@ col_map, col_info = st.columns([7, 3])
 with col_map:
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=13)
     if user_pos:
-        # 自定義絲滑水波紋 HTML Marker
-        icon_html = '<div class="pulse"></div>'
-        folium.Marker(user_pos, icon=folium.DivIcon(html=icon_html)).add_to(m)
+        folium.Marker(user_pos, icon=folium.DivIcon(html='<div class="pulse"></div>')).add_to(m)
     
-    if token:
+    if token and isinstance(live_pos, dict):
         for t in live_pos.get('LivePositions', []):
             folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], 
                           icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')).add_to(m)
@@ -145,7 +154,7 @@ with col_map:
 
 with col_info:
     st.markdown('<div class="board-header">🚉 車站即時站牌</div>', unsafe_allow_html=True)
-    sel_st = st.selectbox("選擇車站", list(STATION_COORDS.keys()), index=st.session_state.nearest_st_idx, label_visibility="collapsed")
+    sel_st = st.selectbox("選擇車站", list(STATION_COORDS.keys()), index=st.session_state.nearest_idx, label_visibility="collapsed")
     tid = sel_st.split()[0]
 
     if token:
@@ -156,17 +165,34 @@ with col_info:
                 for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999)):
                     est = int(item.get('EstimateTime', 0))
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
-                    st.markdown(f'<div class="paper-card"><div class="arrival-label">預計抵達時間</div><div class="arrival-time">{msg}</div></div>', unsafe_allow_html=True)
+                    # 卡片回歸
+                    st.markdown(f"""
+                    <div class="paper-card">
+                        <div class="arrival-label">預計抵達時間</div>
+                        <div class="arrival-time">{msg}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
             else: st.info("⌛ 暫無列車資訊")
         except: pass
 
     tz = pytz.timezone('Asia/Taipei')
-    st.markdown(f'<div style="font-size:0.85em; color:#888; margin-top:20px; border-top:1px solid #333; padding-top:10px;">📍 更新：{datetime.datetime.now(tz).strftime("%H:%M:%S")}<br>🛰️ 座標：{user_pos if user_pos else "定位中..."}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="font-size:0.85em; color:#888; margin-top:20px; border-top:1px solid #333; padding-top:10px;">📍 更新時間：{datetime.datetime.now(tz).strftime("%H:%M:%S")}<br>🛰️ 座標：{user_pos if user_pos else "定位中..."}</div>', unsafe_allow_html=True)
 
+# --- E. 底部資訊回歸 ---
 st.markdown(f"""
-<div class="footer-box">
+<div class="author-box">
     <div style="font-weight:bold; color:#eee; margin-bottom:8px;">✍️ 作者留言：</div>
-    <div class="author-text">各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。</div>
+    <div class="author-msg">各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。</div>
+</div>
+
+<div class="author-box">
+    <div style="font-weight:bold; color:#eee; margin-bottom:5px;">📦 版本更新紀錄 (V4.5) ：</div>
+    <div style="color:#abb2bf; font-size:14px; font-family:'Zen Maru Gothic' !important;">
+        • <b>樣式完整找回</b>：修正 CSS 衝突，讓到站時間卡片、背景框架與版本紀錄正確顯示。<br>
+        • <b>字體細部微調</b>：圖標說明文字改為手寫體，資訊欄位保持圓體，提升視覺層次感。<br>
+        • <b>自動選站優化</b>：根據用戶經緯度自動計算最近車站，進入即跳轉。<br>
+        • <b>雷達感定位器</b>：高效能 CSS 擴散波紋，顯示您當前位置。
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
