@@ -43,52 +43,29 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# --- B. CSS 樣式 ---
+# --- B. CSS 樣式修正 ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
     {font_css}
-    
     .stApp {{ background-color: #0e1117 !important; color: white !important; }}
-    
-    html, body, [data-testid="stAppViewContainer"], p, span, label, div {{
-        font-family: 'Zen Maru Gothic', sans-serif !important;
-    }}
-
-    .custom-title {{
-        font-family: 'HandWrite' !important;
-        font-size: clamp(26px, 6vw, 44px);
-        color: #a5d6a7;
-        text-align: center;
-        white-space: nowrap;
-        margin: 15px 0;
-    }}
-
-    .legend-box {{ 
-        font-family: 'Zen Maru Gothic' !important; 
-        background-color: #1a1d23; border-radius: 12px; padding: 10px; margin-bottom: 15px; 
-        display: flex; justify-content: center; gap: 15px; font-size: 15px; border: 1px solid #30363d;
-    }}
-
-    .board-header {{ font-family: 'HandWrite' !important; font-size: 28px; color: #81c784; margin-bottom: 10px; }}
-    .arrival-label {{ font-family: 'HandWrite' !important; color: #4caf50; font-size: 15px; }}
+    html, body, div, p, span {{ font-family: 'Zen Maru Gothic', sans-serif !important; }}
+    .custom-title {{ font-family: 'HandWrite' !important; font-size: clamp(26px, 6vw, 44px); color: #a5d6a7; text-align: center; margin: 15px 0; }}
+    .legend-box {{ background-color: #1a1d23; border-radius: 12px; padding: 10px; margin-bottom: 15px; display: flex; justify-content: center; gap: 15px; font-size: 15px; border: 1px solid #30363d; }}
+    .board-header {{ font-family: 'HandWrite' !important; font-size: 28px; color: #81c784; }}
     .arrival-time {{ font-family: 'HandWrite' !important; font-size: 32px; color: #ffffff; }}
-    
-    .author-text {{ font-family: 'HandWrite' !important; font-size: 1.3em; color: #abb2bf; line-height: 1.5; }}
-    .footer-box {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-top: 15px; }}
     .paper-card {{ background-color: #1a1d23; border-left: 6px solid #4caf50; padding: 15px; margin-bottom: 12px; border-radius: 10px; border: 1px solid #30363d; }}
+    .author-text {{ font-family: 'HandWrite' !important; font-size: 1.3em; color: #abb2bf; }}
 
-    /* 定位水波紋修復：提高 z-index 確保在最上層 */
+    /* 波源動畫核心 */
     .pulse {{
-        width: 14px; height: 14px; background: #ff5252; border-radius: 50%;
-        position: absolute; box-shadow: 0 0 12px #ff5252; z-index: 1000;
-        top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 15px; height: 15px; background: #ff5252; border-radius: 50%;
+        position: relative; box-shadow: 0 0 15px #ff5252;
     }}
     .pulse::after {{
         content: ""; position: absolute; width: 100%; height: 100%;
         border-radius: 50%; background: #ff5252; opacity: 0.8;
-        animation: sonar 1.8s infinite ease-out;
-        top: 0; left: 0;
+        animation: sonar 1.5s infinite ease-out; top: 0; left: 0;
     }}
     @keyframes sonar {{
         0% {{ transform: scale(1); opacity: 0.8; }}
@@ -97,20 +74,12 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- C. 智慧定位邏輯 ---
-if 'nearest_st_idx' not in st.session_state:
-    st.session_state.nearest_st_idx = 0
-
+# --- C. 智慧定位與數據抓取 ---
 user_pos = None
 loc = get_geolocation()
 if loc:
     user_pos = [loc['coords']['latitude'], loc['coords']['longitude']]
-    dists = []
-    for i, (name, coord) in enumerate(STATION_COORDS.items()):
-        dists.append((i, haversine(user_pos[0], user_pos[1], coord[0], coord[1])))
-    st.session_state.nearest_st_idx = min(dists, key=lambda x: x[1])[0]
 
-# --- D. API 數據抓取 ---
 def get_tdx_data():
     try:
         cid = st.secrets.get("TD_ID_NEW") or st.secrets.get("TD_ID")
@@ -132,26 +101,38 @@ st.markdown('<div class="legend-box">🟢順行 | 🔵逆行 | 🔴目前位置<
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 地圖底圖切換回稍微有深色調但清楚的 CartoDB Voyager
+    # 使用截圖中顯示最正常的底圖
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=13, tiles="cartodb voyager")
     
+    # 放置紅點波源 (優先放置)
     if user_pos:
-        # 強制使用 DivIcon 渲染紅色波源
-        icon_html = '<div style="position: relative;"><div class="pulse"></div></div>'
         folium.Marker(
-            location=user_pos,
-            icon=folium.DivIcon(html=icon_html, icon_size=(20,20), icon_anchor=(10,10))
+            user_pos, 
+            icon=folium.DivIcon(html=f'<div class="pulse"></div>', icon_anchor=(7,7))
         ).add_to(m)
     
-    if token and isinstance(live_pos, dict):
-        for t in live_pos.get('LivePositions', []):
-            folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], 
-                          icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')).add_to(m)
+    # 放置列車
+    if token and isinstance(live_pos, list):
+        for t in live_pos:
+            lat = t.get('TrainPosition', {}).get('PositionLat')
+            lon = t.get('TrainPosition', {}).get('PositionLon')
+            if lat and lon:
+                folium.Marker([lat, lon], 
+                    icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')
+                ).add_to(m)
+    
     folium_static(m, height=480, width=900)
 
 with col_info:
     st.markdown('<div class="board-header">🚉 車站即時站牌</div>', unsafe_allow_html=True)
-    sel_st = st.selectbox("選擇車站", list(STATION_COORDS.keys()), index=st.session_state.nearest_st_idx, label_visibility="collapsed")
+    
+    # 距離運算邏輯
+    nearest_idx = 0
+    if user_pos:
+        dists = [(i, haversine(user_pos[0], user_pos[1], c[0], c[1])) for i, c in enumerate(STATION_COORDS.values())]
+        nearest_idx = min(dists, key=lambda x: x[1])[0]
+
+    sel_st = st.selectbox("選擇車站", list(STATION_COORDS.keys()), index=nearest_idx, label_visibility="collapsed")
     tid = sel_st.split()[0]
 
     if token:
@@ -162,30 +143,14 @@ with col_info:
                 for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999)):
                     est = int(item.get('EstimateTime', 0))
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
-                    st.markdown(f'''<div class="paper-card"><div class="arrival-label">預計抵達時間</div><div class="arrival-time">{msg}</div></div>''', unsafe_allow_html=True)
-            else:
-                st.info("⌛ 暫無列車資訊")
+                    st.markdown(f'<div class="paper-card"><div class="arrival-time">{msg}</div></div>', unsafe_allow_html=True)
         except: pass
 
     tz = pytz.timezone('Asia/Taipei')
-    full_time = datetime.datetime.now(tz).strftime("%Y年%m月%d日 %H:%M:%S")
-    st.markdown(f'<div style="font-size:0.9em; color:#888; margin-top:20px; border-top:1px solid #444; padding-top:10px;">📍 更新：{full_time}<br>🛰️ 座標：{user_pos if user_pos else "定位中..."}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="font-size:0.8em; color:#888;">📍 更新：{datetime.datetime.now(tz).strftime("%Y/%m/%d %H:%M:%S")}</div>', unsafe_allow_html=True)
 
-# --- F. 底部留言與紀錄 ---
-st.markdown(f"""
-<div class="footer-box">
-    <div style="font-weight:bold; color:#eee; margin-bottom:8px;">✍️ 作者留言：</div>
-    <div class="author-text">各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。</div>
-</div>
-<div class="footer-box">
-    <div style="font-weight:bold; color:#eee; margin-bottom:5px;">📦 版本更新紀錄 (V4.9) ：</div>
-    <div style="color:#abb2bf; font-size:14px; font-family: 'Zen Maru Gothic' !important;">
-        • <b>紅色波源修復</b>：調整 z-index 與 Marker 渲染邏輯，找回遺失的定位點。<br>
-        • <b>地圖風格優化</b>：切換至 CartoDB Voyager，兼顧路網清晰度與視覺美感。<br>
-        • <b>時間顯示</b>：維持 V4.8 的完整年月日顯示。
-    </div>
-</div>
-""", unsafe_allow_html=True)
+# 底部留言
+st.markdown(f'<div class="footer-box"><div class="author-text">各位親朋好友們，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 提供。</div></div>', unsafe_allow_html=True)
 
 time.sleep(30)
 st.rerun()
