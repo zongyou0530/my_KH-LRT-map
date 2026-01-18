@@ -34,7 +34,7 @@ STATION_COORDS = {
     "C27 鼎山街": [22.6515, 120.3205], "C28 高雄高工": [22.6465, 120.3235], "C29 樹德家商": [22.6415, 120.3275], 
     "C30 科工館": [22.6365, 120.3305], "C31 聖功醫院": [22.6315, 120.3315], "C32 凱旋公園": [22.6265, 120.3305], 
     "C33 衛生局": [22.6222, 120.3285], "C34 五權國小": [22.6175, 120.3275], "C35 凱旋武昌": [22.6135, 120.3275], 
-    "C36 凱旋二 二聖": [22.6085, 120.3265], "C37 輕軌機廠": [22.6045, 120.3245]
+    "C36 凱旋二聖": [22.6085, 120.3265], "C37 輕軌機廠": [22.6045, 120.3245]
 }
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -43,7 +43,7 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# --- B. CSS 樣式修正 (針對電腦深色優化) ---
+# --- B. CSS 樣式微調 ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
@@ -73,10 +73,11 @@ st.markdown(f"""
     .arrival-label {{ font-family: 'HandWrite' !important; color: #4caf50; font-size: 15px; }}
     .arrival-time {{ font-family: 'HandWrite' !important; font-size: 32px; color: #ffffff; }}
     
+    /* 圖例框：改回圓體 */
     .legend-box {{ 
-        font-family: 'HandWrite' !important; 
+        font-family: 'Zen Maru Gothic' !important; 
         background-color: #1a1d23; border-radius: 12px; padding: 10px; margin-bottom: 15px; 
-        display: flex; justify-content: center; gap: 15px; font-size: 16px; border: 1px solid #30363d;
+        display: flex; justify-content: center; gap: 15px; font-size: 15px; border: 1px solid #30363d;
     }}
 
     .author-text {{ font-family: 'HandWrite' !important; font-size: 1.3em; color: #abb2bf; line-height: 1.5; }}
@@ -134,8 +135,8 @@ st.markdown('<div class="legend-box">🟢順行 | 🔵逆行 | 🔴目前位置<
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 電腦版也強制使用深色底圖
-    m = folium.Map(location=[22.6280, 120.3014], zoom_start=13, tiles="cartodb dark_matter")
+    # 修改地圖底圖：使用稍微明亮的深色路網 (CartoDB voyager 變體或預設)
+    m = folium.Map(location=[22.6280, 120.3014], zoom_start=13, tiles="OpenStreetMap") # 改回 OSM 或嘗試 CartoDB Positron
     if user_pos:
         icon_html = '<div class="pulse"></div>'
         folium.Marker(user_pos, icon=folium.DivIcon(html=icon_html)).add_to(m)
@@ -156,28 +157,33 @@ with col_info:
             b_url = f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON"
             b_res = requests.get(b_url, headers={'Authorization': f'Bearer {token}'}, timeout=10).json()
             if b_res:
-                # 這裡修正了報錯的縮排問題
                 for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999)):
                     est = int(item.get('EstimateTime', 0))
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
-                    st.markdown(f'''
-                        <div class="paper-card">
-                            <div class="arrival-label">預計抵達時間</div>
-                            <div class="arrival-time">{msg}</div>
-                        </div>
-                    ''', unsafe_allow_html=True)
+                    st.markdown(f'''<div class="paper-card"><div class="arrival-label">預計抵達時間</div><div class="arrival-time">{msg}</div></div>''', unsafe_allow_html=True)
             else:
                 st.info("⌛ 暫無列車資訊")
-        except:
-            pass
+        except: pass
 
+    # 時間格式修正：補上完整年月日
     tz = pytz.timezone('Asia/Taipei')
-    st.markdown(f'<div style="font-size:0.9em; color:#888; margin-top:20px; border-top:1px solid #444; padding-top:10px;">📍 更新：{datetime.datetime.now(tz).strftime("%H:%M:%S")}<br>🛰️ 座標：{user_pos if user_pos else "定位中..."}</div>', unsafe_allow_html=True)
+    full_time = datetime.datetime.now(tz).strftime("%Y年%m月%d日 %H:%M:%S")
+    st.markdown(f'<div style="font-size:0.9em; color:#888; margin-top:20px; border-top:1px solid #444; padding-top:10px;">📍 更新：{full_time}<br>🛰️ 座標：{user_pos if user_pos else "定位中..."}</div>', unsafe_allow_html=True)
 
+# --- F. 底部留言與紀錄 (找回版本紀錄區塊) ---
 st.markdown(f"""
 <div class="footer-box">
     <div style="font-weight:bold; color:#eee; margin-bottom:8px;">✍️ 作者留言：</div>
     <div class="author-text">各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。</div>
+</div>
+<div class="footer-box">
+    <div style="font-weight:bold; color:#eee; margin-bottom:5px;">📦 版本更新紀錄 (V4.8) ：</div>
+    <div style="color:#abb2bf; font-size:14px; font-family: 'Zen Maru Gothic' !important;">
+        • <b>地圖亮度修復</b>：更換底圖解決地圖太黑看不清道路的問題。<br>
+        • <b>時間格式強化</b>：資訊欄更新時間補上年月日顯示。<br>
+        • <b>UI 細節調整</b>：圖標說明區域恢復圓體，提升閱讀一致性。<br>
+        • <b>紀錄找回</b>：修正程式碼區塊導致版本紀錄消失的錯誤。
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
