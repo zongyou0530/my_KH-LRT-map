@@ -43,7 +43,7 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# --- B. CSS 樣式微調 ---
+# --- B. CSS 樣式 ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
@@ -64,38 +64,35 @@ st.markdown(f"""
         margin: 15px 0;
     }}
 
-    .stSelectbox div[data-baseweb="select"] {{
-        font-family: 'Zen Maru Gothic' !important;
-        background-color: #1a1d23 !important;
-    }}
-
-    .board-header {{ font-family: 'HandWrite' !important; font-size: 28px; color: #81c784; margin-bottom: 10px; }}
-    .arrival-label {{ font-family: 'HandWrite' !important; color: #4caf50; font-size: 15px; }}
-    .arrival-time {{ font-family: 'HandWrite' !important; font-size: 32px; color: #ffffff; }}
-    
-    /* 圖例框：改回圓體 */
     .legend-box {{ 
         font-family: 'Zen Maru Gothic' !important; 
         background-color: #1a1d23; border-radius: 12px; padding: 10px; margin-bottom: 15px; 
         display: flex; justify-content: center; gap: 15px; font-size: 15px; border: 1px solid #30363d;
     }}
 
+    .board-header {{ font-family: 'HandWrite' !important; font-size: 28px; color: #81c784; margin-bottom: 10px; }}
+    .arrival-label {{ font-family: 'HandWrite' !important; color: #4caf50; font-size: 15px; }}
+    .arrival-time {{ font-family: 'HandWrite' !important; font-size: 32px; color: #ffffff; }}
+    
     .author-text {{ font-family: 'HandWrite' !important; font-size: 1.3em; color: #abb2bf; line-height: 1.5; }}
     .footer-box {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-top: 15px; }}
-    .paper-card {{ background-color: #1a1d23; border-left: 6px solid #4caf50; padding: 15px; margin-bottom: 12px; border-radius: 10px; border: 1px solid #30363d; border-left-width: 6px; }}
+    .paper-card {{ background-color: #1a1d23; border-left: 6px solid #4caf50; padding: 15px; margin-bottom: 12px; border-radius: 10px; border: 1px solid #30363d; }}
 
+    /* 定位水波紋修復：提高 z-index 確保在最上層 */
     .pulse {{
         width: 14px; height: 14px; background: #ff5252; border-radius: 50%;
-        position: relative; box-shadow: 0 0 10px #ff5252;
+        position: absolute; box-shadow: 0 0 12px #ff5252; z-index: 1000;
+        top: 50%; left: 50%; transform: translate(-50%, -50%);
     }}
     .pulse::after {{
         content: ""; position: absolute; width: 100%; height: 100%;
         border-radius: 50%; background: #ff5252; opacity: 0.8;
-        animation: sonar 1.5s infinite ease-out;
+        animation: sonar 1.8s infinite ease-out;
+        top: 0; left: 0;
     }}
     @keyframes sonar {{
         0% {{ transform: scale(1); opacity: 0.8; }}
-        100% {{ transform: scale(4.5); opacity: 0; }}
+        100% {{ transform: scale(5); opacity: 0; }}
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -135,11 +132,16 @@ st.markdown('<div class="legend-box">🟢順行 | 🔵逆行 | 🔴目前位置<
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 修改地圖底圖：使用稍微明亮的深色路網 (CartoDB voyager 變體或預設)
-    m = folium.Map(location=[22.6280, 120.3014], zoom_start=13, tiles="OpenStreetMap") # 改回 OSM 或嘗試 CartoDB Positron
+    # 地圖底圖切換回稍微有深色調但清楚的 CartoDB Voyager
+    m = folium.Map(location=[22.6280, 120.3014], zoom_start=13, tiles="cartodb voyager")
+    
     if user_pos:
-        icon_html = '<div class="pulse"></div>'
-        folium.Marker(user_pos, icon=folium.DivIcon(html=icon_html)).add_to(m)
+        # 強制使用 DivIcon 渲染紅色波源
+        icon_html = '<div style="position: relative;"><div class="pulse"></div></div>'
+        folium.Marker(
+            location=user_pos,
+            icon=folium.DivIcon(html=icon_html, icon_size=(20,20), icon_anchor=(10,10))
+        ).add_to(m)
     
     if token and isinstance(live_pos, dict):
         for t in live_pos.get('LivePositions', []):
@@ -165,24 +167,22 @@ with col_info:
                 st.info("⌛ 暫無列車資訊")
         except: pass
 
-    # 時間格式修正：補上完整年月日
     tz = pytz.timezone('Asia/Taipei')
     full_time = datetime.datetime.now(tz).strftime("%Y年%m月%d日 %H:%M:%S")
     st.markdown(f'<div style="font-size:0.9em; color:#888; margin-top:20px; border-top:1px solid #444; padding-top:10px;">📍 更新：{full_time}<br>🛰️ 座標：{user_pos if user_pos else "定位中..."}</div>', unsafe_allow_html=True)
 
-# --- F. 底部留言與紀錄 (找回版本紀錄區塊) ---
+# --- F. 底部留言與紀錄 ---
 st.markdown(f"""
 <div class="footer-box">
     <div style="font-weight:bold; color:#eee; margin-bottom:8px;">✍️ 作者留言：</div>
     <div class="author-text">各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。</div>
 </div>
 <div class="footer-box">
-    <div style="font-weight:bold; color:#eee; margin-bottom:5px;">📦 版本更新紀錄 (V4.8) ：</div>
+    <div style="font-weight:bold; color:#eee; margin-bottom:5px;">📦 版本更新紀錄 (V4.9) ：</div>
     <div style="color:#abb2bf; font-size:14px; font-family: 'Zen Maru Gothic' !important;">
-        • <b>地圖亮度修復</b>：更換底圖解決地圖太黑看不清道路的問題。<br>
-        • <b>時間格式強化</b>：資訊欄更新時間補上年月日顯示。<br>
-        • <b>UI 細節調整</b>：圖標說明區域恢復圓體，提升閱讀一致性。<br>
-        • <b>紀錄找回</b>：修正程式碼區塊導致版本紀錄消失的錯誤。
+        • <b>紅色波源修復</b>：調整 z-index 與 Marker 渲染邏輯，找回遺失的定位點。<br>
+        • <b>地圖風格優化</b>：切換至 CartoDB Voyager，兼顧路網清晰度與視覺美感。<br>
+        • <b>時間顯示</b>：維持 V4.8 的完整年月日顯示。
     </div>
 </div>
 """, unsafe_allow_html=True)
