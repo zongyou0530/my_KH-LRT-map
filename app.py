@@ -10,7 +10,7 @@ import os
 import math
 from streamlit_js_eval import get_geolocation
 
-# 1. 頁面配置：強迫電腦版背景為深色
+# 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide", initial_sidebar_state="collapsed")
 
 # --- A. 字體與車站數據 ---
@@ -34,7 +34,7 @@ STATION_COORDS = {
     "C27 鼎山街": [22.6515, 120.3205], "C28 高雄高工": [22.6465, 120.3235], "C29 樹德家商": [22.6415, 120.3275], 
     "C30 科工館": [22.6365, 120.3305], "C31 聖功醫院": [22.6315, 120.3315], "C32 凱旋公園": [22.6265, 120.3305], 
     "C33 衛生局": [22.6222, 120.3285], "C34 五權國小": [22.6175, 120.3275], "C35 凱旋武昌": [22.6135, 120.3275], 
-    "C36 凱旋二聖": [22.6085, 120.3265], "C37 輕軌機廠": [22.6045, 120.3245]
+    "C36 凱旋二 二聖": [22.6085, 120.3265], "C37 輕軌機廠": [22.6045, 120.3245]
 }
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -43,21 +43,18 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# --- B. 全深色與字體樣式 ---
+# --- B. CSS 樣式修正 (針對電腦深色優化) ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
     {font_css}
     
-    /* 1. 全域強制深色背景 (電腦版修復) */
     .stApp {{ background-color: #0e1117 !important; color: white !important; }}
     
-    /* 2. 預設字體：圓體 */
     html, body, [data-testid="stAppViewContainer"], p, span, label, div {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
     }}
 
-    /* 3. 標題：手寫體、禁止換行、電腦手機自適應 */
     .custom-title {{
         font-family: 'HandWrite' !important;
         font-size: clamp(26px, 6vw, 44px);
@@ -67,31 +64,25 @@ st.markdown(f"""
         margin: 15px 0;
     }}
 
-    /* 4. 下拉選單：圓體、深色化 */
     .stSelectbox div[data-baseweb="select"] {{
         font-family: 'Zen Maru Gothic' !important;
         background-color: #1a1d23 !important;
     }}
 
-    /* 5. 站牌標題與到站內容：手寫體 */
     .board-header {{ font-family: 'HandWrite' !important; font-size: 28px; color: #81c784; margin-bottom: 10px; }}
     .arrival-label {{ font-family: 'HandWrite' !important; color: #4caf50; font-size: 15px; }}
     .arrival-time {{ font-family: 'HandWrite' !important; font-size: 32px; color: #ffffff; }}
     
-    /* 6. 圖標說明：手寫體覆蓋 */
     .legend-box {{ 
         font-family: 'HandWrite' !important; 
         background-color: #1a1d23; border-radius: 12px; padding: 10px; margin-bottom: 15px; 
         display: flex; justify-content: center; gap: 15px; font-size: 16px; border: 1px solid #30363d;
     }}
 
-    /* 7. 留言板：手寫體 */
     .author-text {{ font-family: 'HandWrite' !important; font-size: 1.3em; color: #abb2bf; line-height: 1.5; }}
     .footer-box {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-top: 15px; }}
+    .paper-card {{ background-color: #1a1d23; border-left: 6px solid #4caf50; padding: 15px; margin-bottom: 12px; border-radius: 10px; border: 1px solid #30363d; border-left-width: 6px; }}
 
-    .paper-card {{ background-color: #1a1d23; border-left: 6px solid #4caf50; padding: 15px; margin-bottom: 12px; border-radius: 10px; border-top: 1px solid #30363d; border-right: 1px solid #30363d; border-bottom: 1px solid #30363d; }}
-
-    /* 定位水波紋：絲滑廣播感 */
     .pulse {{
         width: 14px; height: 14px; background: #ff5252; border-radius: 50%;
         position: relative; box-shadow: 0 0 10px #ff5252;
@@ -108,7 +99,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- C. 智慧定位車站 ---
+# --- C. 智慧定位邏輯 ---
 if 'nearest_st_idx' not in st.session_state:
     st.session_state.nearest_st_idx = 0
 
@@ -121,7 +112,7 @@ if loc:
         dists.append((i, haversine(user_pos[0], user_pos[1], coord[0], coord[1])))
     st.session_state.nearest_st_idx = min(dists, key=lambda x: x[1])[0]
 
-# --- D. 暴力刷新 API ---
+# --- D. API 數據抓取 ---
 def get_tdx_data():
     try:
         cid = st.secrets.get("TD_ID_NEW") or st.secrets.get("TD_ID")
@@ -143,7 +134,7 @@ st.markdown('<div class="legend-box">🟢順行 | 🔵逆行 | 🔴目前位置<
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 建立地圖
+    # 電腦版也強制使用深色底圖
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=13, tiles="cartodb dark_matter")
     if user_pos:
         icon_html = '<div class="pulse"></div>'
@@ -162,7 +153,33 @@ with col_info:
 
     if token:
         try:
-            b_res = requests.get(f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON", 
-                                 headers={'Authorization': f'Bearer {token}'}, timeout=10).json()
+            b_url = f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON"
+            b_res = requests.get(b_url, headers={'Authorization': f'Bearer {token}'}, timeout=10).json()
             if b_res:
+                # 這裡修正了報錯的縮排問題
                 for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999)):
+                    est = int(item.get('EstimateTime', 0))
+                    msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
+                    st.markdown(f'''
+                        <div class="paper-card">
+                            <div class="arrival-label">預計抵達時間</div>
+                            <div class="arrival-time">{msg}</div>
+                        </div>
+                    ''', unsafe_allow_html=True)
+            else:
+                st.info("⌛ 暫無列車資訊")
+        except:
+            pass
+
+    tz = pytz.timezone('Asia/Taipei')
+    st.markdown(f'<div style="font-size:0.9em; color:#888; margin-top:20px; border-top:1px solid #444; padding-top:10px;">📍 更新：{datetime.datetime.now(tz).strftime("%H:%M:%S")}<br>🛰️ 座標：{user_pos if user_pos else "定位中..."}</div>', unsafe_allow_html=True)
+
+st.markdown(f"""
+<div class="footer-box">
+    <div style="font-weight:bold; color:#eee; margin-bottom:8px;">✍️ 作者留言：</div>
+    <div class="author-text">各位親朋好友們，拜託請幫我看看到底準不準，不準的話可以搜尋ig跟我講謝謝。資料由 TDX 平台提供，僅供參考。</div>
+</div>
+""", unsafe_allow_html=True)
+
+time.sleep(30)
+st.rerun()
