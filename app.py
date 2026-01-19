@@ -43,7 +43,7 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# --- B. 樣式修復 (V5.2 強效版) ---
+# --- B. 樣式修復 (V5.3 強化波源) ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap');
@@ -51,25 +51,22 @@ st.markdown(f"""
     
     .stApp {{ background-color: #0e1117 !important; color: white !important; }}
 
-    /* 標題：放大且允許換行 */
+    /* 標題：放大並允許換行 */
     .custom-title {{
         font-family: 'HandWrite' !important;
-        font-size: clamp(32px, 10vw, 56px);
+        font-size: clamp(34px, 10vw, 58px);
         color: #a5d6a7;
         text-align: center;
         margin: 25px 0;
         line-height: 1.3;
-        font-weight: normal;
     }}
 
-    /* 圖例與卡片標題：圓體 */
-    .legend-box, .card-title {{ 
+    .legend-box {{ 
         font-family: 'Zen Maru Gothic' !important; 
         background-color: #1a1d23; border-radius: 12px; padding: 12px; margin-bottom: 20px; 
         display: flex; justify-content: center; gap: 15px; border: 1px solid #30363d;
     }}
 
-    /* 卡片通用排版 */
     .info-card {{
         background-color: #1a1d23;
         border: 1px solid #30363d;
@@ -78,25 +75,22 @@ st.markdown(f"""
         margin-bottom: 15px;
     }}
 
-    .card-label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784; font-size: 18px; margin-bottom: 8px; }}
+    .card-label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784; font-size: 19px; margin-bottom: 8px; }}
     .card-content {{ font-family: 'HandWrite' !important; font-size: 32px; color: #ffffff; line-height: 1.2; }}
     
-    /* 下拉選單 */
-    .stSelectbox label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784 !important; font-size: 18px !important; }}
-
-    /* 定位波源動畫 */
+    /* 修正紅點波源：加大範圍與顏色亮度 */
     @keyframes sonar {{
-        0% {{ transform: scale(1); opacity: 0.8; }}
-        100% {{ transform: scale(4); opacity: 0; }}
+        0% {{ transform: scale(1); opacity: 1; }}
+        100% {{ transform: scale(8); opacity: 0; }}
     }}
     .gps-marker {{
-        width: 16px; height: 16px; background: #ff5252; border-radius: 50%;
-        border: 2px solid white; position: relative;
+        width: 20px; height: 20px; background: #ff3b3b; border-radius: 50%;
+        border: 3px solid white; position: relative; z-index: 9999;
     }}
     .gps-marker::after {{
         content: ""; position: absolute; width: 100%; height: 100%;
-        border-radius: 50%; background: #ff5252;
-        animation: sonar 1.5s infinite ease-out; top: -2px; left: -2px; border: 2px solid transparent;
+        border-radius: 50%; background: #ff3b3b;
+        animation: sonar 1.2s infinite ease-out; top: -3px; left: -3px;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -110,8 +104,6 @@ if loc:
     for i, (name, coord) in enumerate(STATION_COORDS.items()):
         dists.append((i, haversine(user_pos[0], user_pos[1], coord[0], coord[1])))
     st.session_state.nearest_st_idx = min(dists, key=lambda x: x[1])[0]
-elif 'nearest_st_idx' not in st.session_state:
-    st.session_state.nearest_st_idx = 0
 
 # --- D. API 數據 ---
 def get_tdx():
@@ -136,29 +128,22 @@ col_map, col_info = st.columns([7, 3])
 
 with col_map:
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=13, tiles="cartodb voyager")
-    
-    # 🔴 紅色定位點：強效顯示
     if user_pos:
         folium.Marker(
             location=user_pos,
             icon=folium.DivIcon(html='<div class="gps-marker"></div>'),
-            z_index_offset=1000
+            z_index_offset=2000 # 絕對置頂
         ).add_to(m)
-        folium.Circle(location=user_pos, radius=20, color="#ff5252", fill=True, opacity=0.3).add_to(m)
     
-    # 🚆 列車位置
     if live_pos:
         for t in live_pos:
             coords = [t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']]
-            folium.Marker(
-                location=coords,
-                icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')
-            ).add_to(m)
+            folium.Marker(coords, icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')).add_to(m)
     folium_static(m, height=500, width=900)
 
 with col_info:
     st.markdown('<div class="card-label">🚉 選擇車站</div>', unsafe_allow_html=True)
-    sel_st = st.selectbox("車站列表", list(STATION_COORDS.keys()), index=st.session_state.nearest_st_idx, label_visibility="collapsed")
+    sel_st = st.selectbox("車站列表", list(STATION_COORDS.keys()), index=st.session_state.get('nearest_st_idx', 0), label_visibility="collapsed")
     tid = sel_st.split()[0]
 
     if token:
@@ -173,24 +158,26 @@ with col_info:
             else: st.info("⌛ 暫無列車資訊")
         except: pass
 
-    # 📍 更新時間區塊（含座標讀取）
     tz = pytz.timezone('Asia/Taipei')
     now_t = datetime.datetime.now(tz).strftime("%Y/%m/%d %H:%M:%S")
-    coords_txt = f"[{user_pos[0]:.6f}, {user_pos[1]:.6f}]" if user_pos else "定位中..."
+    coords_txt = f"[{user_pos[0]:.6f}, {user_pos[1]:.6f}]" if user_pos else "讀取中..."
     st.markdown(f'<div style="font-size:0.9em; color:#888; margin-top:10px;">📍 更新時間：{now_t}<br>🛰️ 目前座標：{coords_txt}</div>', unsafe_allow_html=True)
 
 # --- F. 底部留言與更新 ---
 st.markdown(f"""
 <div class="info-card">
-    <div class="card-label"><b>✍️ 作者留言：</b></div>  <div class="card-content" style="font-size: 1.2em;">各位親朋好友們，不準的話可以私訊 IG 跟我講，資料由 TDX 平台提供，僅供參考。</div>
+    <div class="card-label"><b>✍️ 作者留言：</b></div>
+    <div class="card-content" style="font-size: 1.2em;">各位親朋好友們，不準的話可以私訊 IG 跟我講，資料由 TDX 平台提供，僅供參考。</div>
 </div>
 <div class="info-card">
-    <div class="card-label"><b>📦 版本更新紀錄 (V5.2)：</b></div> <div style="font-family: 'Zen Maru Gothic'; font-size: 14px; color: #abb2bf; line-height: 1.6;">
-        • <b>紅色定位點修復</b>：解決定位點被遮擋問題，強制置頂顯示。<br>
-        • <b>標題強化</b>：放大標題字體並優化手機換行顯示。<br>
-        • <b>排版對齊</b>：卡片標題統一圓體，內容維持手寫感，並補回座標資訊。
+    <div class="card-label"><b>📦 版本更新紀錄 (V5.3)：</b></div>
+    <div style="font-family: 'Zen Maru Gothic'; font-size: 14px; color: #abb2bf; line-height: 1.6;">
+        • <b>定位波源強化</b>：紅點核心加大至 20px，波紋擴散範圍提升 2 倍，確保視覺清晰。<br>
+        • <b>語法修復</b>：修正底部加粗標籤未閉合導致的手寫字加粗錯誤。<br>
+        • <b>標題優化</b>：放大標題字體並調整手機端換行間距。
     </div>
 </div>
 """, unsafe_allow_html=True)
+
 time.sleep(30)
 st.rerun()
