@@ -7,7 +7,6 @@ import os
 import time
 import datetime
 import pytz
-import math
 from streamlit_js_eval import get_geolocation
 
 # 1. 頁面配置
@@ -28,21 +27,26 @@ st.markdown(f"""
         src: url(data:font/otf;base64,{hand_base64}) format('opentype');
     }}
 
+    /* 1. 背景與全頁下移 */
     .stApp {{ background-color: #0e1117; color: white; }}
     header {{ visibility: hidden; }}
-    .block-container {{ padding-top: 2rem !important; }}
-
-    /* 標題：放大且換行 */
-    .header-title {{
-        font-family: 'MyHand', sans-serif !important;
-        font-size: 52px !important; /* 加大標題 */
-        color: #a5d6a7;
-        text-align: center;
-        line-height: 1.1 !important;
-        margin-bottom: 20px;
+    
+    .block-container {{ 
+        padding-top: 6rem !important; /* 增加頂部距離，讓標題往下移 */
+        padding-bottom: 2rem !important;
     }}
 
-    /* 圖例列：縮小 */
+    /* 2. 標題：加大且換行，減少底部間距 */
+    .header-title {{
+        font-family: 'MyHand', sans-serif !important;
+        font-size: 52px !important;
+        color: #a5d6a7;
+        text-align: center;
+        line-height: 1.1;
+        margin-bottom: 10px !important; /* 縮小與圖例的距離 */
+    }}
+
+    /* 3. 圖例：縮小高度，減少與地圖的距離 */
     .legend-container {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
         background-color: #1a1d23;
@@ -50,49 +54,49 @@ st.markdown(f"""
         border-radius: 15px;
         padding: 4px 12px;
         text-align: center;
-        margin: 0 auto 20px auto;
+        margin: 0 auto 10px auto !important; /* 這裡縮小與地圖的間距 */
         width: fit-content;
         font-size: 13px;
         color: #cccccc;
     }}
 
-    /* 卡片微縮化 */
+    /* 4. 卡片設計：精簡化 */
     .info-card {{
         background-color: #1a1d23;
         border: 1px solid #30363d;
         border-radius: 10px;
-        padding: 10px 15px; /* 縮小內邊距 */
-        margin-bottom: 10px; /* 縮小間距 */
+        padding: 10px 15px;
+        margin-bottom: 8px;
     }}
 
     .label-round {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
         color: #81c784;
-        font-size: 15px;
+        font-size: 14px;
         margin-bottom: 2px;
     }}
 
     .content-hand {{
         font-family: 'MyHand', sans-serif !important;
-        font-size: 24px;
+        font-size: 22px;
         color: #ffffff;
     }}
 
-    /* 更新紀錄：靠左、圓體 */
+    /* 5. 更新紀錄：圓體置左 */
     .update-log-box {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
         font-size: 14px;
         color: #cbd5e0;
         line-height: 1.6;
-        text-align: left !important;
+        text-align: left;
     }}
     
     .status-text-left {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
         text-align: left;
         color: #718096;
-        font-size: 13px;
-        margin-top: 5px;
+        font-size: 12px;
+        margin-top: 2px;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -118,11 +122,10 @@ def get_tdx():
 col_map, col_info = st.columns([7, 3.5])
 
 with col_map:
-    # 預設美術館中心，如果有使用者位置則以此為中心
+    # 地圖繪製邏輯
     center = user_pos if user_pos else [22.6593, 120.2868]
     m = folium.Map(location=center, zoom_start=15, tiles="cartodb voyager")
     
-    # 標記使用者紅點
     if user_pos:
         folium.CircleMarker(user_pos, radius=6, color='white', weight=2, fill=True, fill_color='red', fill_opacity=1, popup="目前位置").add_to(m)
     
@@ -132,7 +135,7 @@ with col_map:
             folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], 
                           icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')).add_to(m)
         except: continue
-    folium_static(m, height=500, width=800)
+    folium_static(m, height=480, width=800) # 微縮地圖高度，讓版面更緊湊
 
 with col_info:
     st.markdown('<div class="label-round">🚉 選擇車站</div>', unsafe_allow_html=True)
@@ -153,20 +156,17 @@ with col_info:
 
     now_t = datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime("%Y/%m/%d %H:%M:%S")
     st.markdown(f'<div class="status-text-left">📍 更新時間：{now_t}</div>', unsafe_allow_html=True)
-    if user_pos:
-        st.markdown(f'<div class="status-text-left">✅ 已成功讀取座標</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="status-text-left">⚠️ 正在嘗試讀取座標...</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="status-text-left">{"✅ 座標已讀取" if user_pos else "⚠️ 座標讀取中..."}</div>', unsafe_allow_html=True)
 
-# --- D. 底部說明 ---
-st.markdown('<div style="height:20px;"></div>', unsafe_allow_html=True)
+# --- D. 底部區塊 ---
+st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
 col_msg, col_log = st.columns([1, 1.2])
 
 with col_msg:
     st.markdown(f"""
     <div class="info-card">
         <div class="label-round">✍️ 作者留言：</div>
-        <div class="content-hand" style="font-size: 19px;">
+        <div class="content-hand" style="font-size: 18px;">
         各位親朋好友們，不準的話可以私訊 IG 跟我講，資料由 TDX 平台提供，僅供參考。
         </div>
     </div>
@@ -177,11 +177,10 @@ with col_log:
     <div class="info-card">
         <div class="label-round">📦 最新更新內容說明：</div>
         <div class="update-log-box">
-            • 標題放大且換行處理，修正頂部視覺比例。<br>
-            • 恢復紅點標記：加入自動抓取當前位置座標功能。<br>
-            • 精簡化卡片：縮小預計抵達時間卡片尺寸與文字。<br>
-            • 底部資訊靠左：更新時間與座標讀取狀態全面置左。<br>
-            • 字體修正：說明內容改回圓體，保持閱讀舒適度。
+            • 視覺垂直平移：增加頂部留白，解決標題與頂端過近的壓迫感。<br>
+            • 間距優化：大幅縮減圖例與地圖之間的無意義空白。<br>
+            • 版面平衡：縮小地圖高度與卡片內邊距，提升整體閱讀節奏。<br>
+            • 文字狀態補全：補回座標讀取狀態，並維持置左排列。
         </div>
     </div>
     """, unsafe_allow_html=True)
