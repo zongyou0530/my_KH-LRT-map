@@ -27,16 +27,16 @@ st.markdown(f"""
         src: url(data:font/otf;base64,{hand_base64}) format('opentype');
     }}
 
-    /* 1. 背景與全頁下移 */
+    /* 背景與全頁下移 */
     .stApp {{ background-color: #0e1117; color: white; }}
     header {{ visibility: hidden; }}
     
     .block-container {{ 
-        padding-top: 6rem !important; /* 增加頂部距離 */
+        padding-top: 6rem !important; 
         padding-bottom: 2rem !important;
     }}
 
-    /* 2. 標題：手寫體、加大且換行 */
+    /* 標題：手寫體 */
     .header-title {{
         font-family: 'MyHand', sans-serif !important;
         font-size: 52px !important;
@@ -46,7 +46,7 @@ st.markdown(f"""
         margin-bottom: 10px !important;
     }}
 
-    /* 3. 圖例：微縮、圓體 */
+    /* 圖例：圓體 */
     .legend-container {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
         background-color: #1a1d23;
@@ -60,7 +60,7 @@ st.markdown(f"""
         color: #cccccc;
     }}
 
-    /* 4. 卡片設計：精簡化 */
+    /* 卡片設計 */
     .info-card {{
         background-color: #1a1d23;
         border: 1px solid #30363d;
@@ -79,10 +79,9 @@ st.markdown(f"""
     .content-hand {{
         font-family: 'MyHand', sans-serif !important;
         font-size: 22px;
-        color: #ffffff; /* 預設白色 */
     }}
 
-    /* 5. 更新紀錄與說明文字：圓體置左 */
+    /* 更新紀錄與說明：圓體 */
     .update-log-box {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
         font-size: 14px;
@@ -122,8 +121,9 @@ def get_tdx():
 col_map, col_info = st.columns([7, 3.5])
 
 with col_map:
+    # --- 重要修改：改回原始地圖底圖 (OpenStreetMap) ---
     center = user_pos if user_pos else [22.6593, 120.2868]
-    m = folium.Map(location=center, zoom_start=15, tiles="cartodb voyager")
+    m = folium.Map(location=center, zoom_start=15) # 移除 tiles 參數，使用預設的 OpenStreetMap
     
     if user_pos:
         folium.CircleMarker(user_pos, radius=6, color='white', weight=2, fill=True, fill_color='red', fill_opacity=1, popup="目前位置").add_to(m)
@@ -151,7 +151,7 @@ with col_info:
                     est = int(item.get('EstimateTime', 0))
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
                     
-                    # 紅字邏輯：小於等於 2 分鐘變紅
+                    # 紅字邏輯
                     text_style = 'color: #ff5252 !important;' if est <= 2 else 'color: #ffffff;'
                     
                     st.markdown(f'''
@@ -181,15 +181,14 @@ with col_msg:
     """, unsafe_allow_html=True)
 
 with col_log:
-    # 這裡將內容改回圓體 (update-log-box)，不使用手寫體
     st.markdown(f"""
     <div class="info-card">
         <div class="label-round">📦 最新更新內容說明：</div>
         <div class="update-log-box">
-            • 修正紅字顯示：當列車預計 2 分鐘內抵達或進站時，時間將顯示為紅色。<br>
-            • 字體優化：更新說明區塊統一使用「圓體」，僅重點資訊保留手寫體。<br>
-            • 版面微調：標題下移並縮小組件間距，優化手機觀看視野。<br>
-            • 功能維持：紅點定位、自動更新與即時進站看板皆穩定運作。
+            • 地圖底圖切換：改回預設地圖底圖，顯示各車站名稱與交通路線，方便對照位置。<br>
+            • 警示紅字：當列車 2 分鐘內進站，時間會自動轉為紅色。<br>
+            • 字體控制：說明文案維持圓體，重要標題與數字使用手寫體。<br>
+            • 座標功能：自動追蹤使用者紅點位置與 TDX 列車即時資訊。
         </div>
     </div>
     """, unsafe_allow_html=True)
