@@ -11,9 +11,9 @@ import math
 from streamlit_js_eval import get_geolocation
 
 # 1. 頁面配置
-st.set_page_config(page_title="高雄輕軌即時監測系統", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="高雄輕軌全線監測系統", layout="wide", initial_sidebar_state="collapsed")
 
-# --- A. 字體與視覺樣式 (CSS) ---
+# --- A. 字體與視覺樣式 ---
 font_path = "ZONGYOOOOOOU1.otf"
 hand_base64 = ""
 if os.path.exists(font_path):
@@ -32,15 +32,15 @@ st.markdown(f"""
     .block-container {{ padding-top: 5rem !important; }}
     .header-title {{ font-family: 'MyHand', sans-serif !important; font-size: 48px !important; color: #a5d6a7; text-align: center; line-height: 1.1; margin-bottom: 10px; }}
     .legend-container {{ font-family: 'Zen Maru Gothic', sans-serif !important; background-color: #1a1d23; border: 1px solid #30363d; border-radius: 15px; padding: 4px 12px; text-align: center; margin: 0 auto 15px auto; width: fit-content; font-size: 13px; color: #cccccc; }}
-    .info-card {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 10px; padding: 12px 15px; margin-bottom: 8px; }}
-    .dir-label {{ font-family: 'Zen Maru Gothic', sans-serif !important; color: #ffd54f; font-size: 16px; font-weight: bold; margin: 10px 0 5px 0; border-left: 4px solid #ffd54f; padding-left: 8px; }}
-    .label-round {{ font-family: 'Zen Maru Gothic', sans-serif !important; color: #81c784; font-size: 14px; margin-bottom: 2px; }}
-    .content-hand {{ font-family: 'MyHand', sans-serif !important; font-size: 28px; line-height: 1.2; }}
+    .info-card {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 10px; padding: 15px; margin-bottom: 10px; }}
+    .dir-label {{ font-family: 'Zen Maru Gothic', sans-serif !important; color: #ffd54f; font-size: 18px; font-weight: bold; margin: 15px 0 10px 0; border-left: 4px solid #ffd54f; padding-left: 8px; }}
+    .label-round {{ font-family: 'Zen Maru Gothic', sans-serif !important; color: #81c784; font-size: 14px; margin-bottom: 5px; }}
+    .content-hand {{ font-family: 'MyHand', sans-serif !important; font-size: 32px; }}
     .status-text {{ font-family: 'Zen Maru Gothic', sans-serif !important; color: #718096; font-size: 12px; margin-top: 4px; line-height: 1.5; }}
 </style>
 """, unsafe_allow_html=True)
 
-# --- B. 核心資料庫 (C1-C37 全線座標) ---
+# --- B. 核心車站資料庫 (C1-C37) ---
 LRT_STATIONS = {
     "C1 籬仔內": [22.6015, 120.3204], "C2 凱旋瑞田": [22.5969, 120.3201], "C3 前鎮之星": [22.5935, 120.3159],
     "C4 凱旋中華": [22.5947, 120.3094], "C5 夢時代": [22.5950, 120.3040], "C6 經貿園區": [22.5985, 120.3023],
@@ -57,7 +57,6 @@ LRT_STATIONS = {
     "C37 輕軌機廠": [22.6025, 120.3235]
 }
 
-# --- C. 功能函式 ---
 def get_token():
     try:
         cid, csk = st.secrets["TD_ID_NEW"], st.secrets["TD_SECRET_NEW"]
@@ -66,14 +65,13 @@ def get_token():
         return r.json().get('access_token')
     except: return None
 
-# 初始化定位與 Token
+# 初始化定位
 user_loc = get_geolocation()
 u_pos = [user_loc['coords']['latitude'], user_loc['coords']['longitude']] if user_loc else None
 token = get_token()
 
-# 標題區
 st.markdown('<div class="header-title">高雄輕軌<br>全線即時監測</div>', unsafe_allow_html=True)
-st.markdown('<div class="legend-container">🟢順行 | 🔵逆行 | 🔴目前位置</div>', unsafe_allow_html=True)
+st.markdown('<div class="legend-container">🚄 即時車輛 | 🔴 目前位置</div>', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3.5])
 
@@ -83,75 +81,70 @@ with col_map:
         folium.CircleMarker(u_pos, radius=7, color='white', weight=2, fill=True, fill_color='red', fill_opacity=1).add_to(m)
     if token:
         try:
-            pos_data = requests.get('https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON', 
-                                   headers={'Authorization': f'Bearer {token}'}).json()
-            trains = pos_data if isinstance(pos_data, list) else pos_data.get('LivePositions', [])
+            pos = requests.get('https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON', 
+                             headers={'Authorization': f'Bearer {token}'}).json()
+            trains = pos if isinstance(pos, list) else pos.get('LivePositions', [])
             for t in trains:
-                c = 'green' if t.get('Direction') == 0 else 'blue'
                 folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], 
-                              icon=folium.Icon(color=c, icon='train', prefix='fa')).add_to(m)
+                              icon=folium.Icon(color='green', icon='train', prefix='fa')).add_to(m)
         except: pass
     folium_static(m, height=480, width=800)
 
 with col_info:
-    # 智慧定位選站
     st_names = list(LRT_STATIONS.keys())
     best_idx = 0
     if u_pos:
         best_st = min(st_names, key=lambda n: math.sqrt((u_pos[0]-LRT_STATIONS[n][0])**2 + (u_pos[1]-LRT_STATIONS[n][1])**2))
         best_idx = st_names.index(best_st)
 
-    st.markdown('<div class="label-round">🚉 選擇車站 (已偵測最近站點)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="label-round">🚉 車站選擇 (已自動定位)</div>', unsafe_allow_html=True)
     sel_st = st.selectbox("", st_names, index=best_idx, label_visibility="collapsed")
     tid = sel_st.split()[0]
     
+    st.markdown('<div class="dir-label">📋 即將進站時刻</div>', unsafe_allow_html=True)
     if token:
         try:
-            b_url = f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON"
-            b_res = requests.get(b_url, headers={'Authorization': f'Bearer {token}'}).json()
-            
-            d0 = [i for i in b_res if i.get('Direction') == 0]
-            d1 = [i for i in b_res if i.get('Direction') == 1]
-
-            def draw_board(data, title, label_txt):
-                st.markdown(f'<div class="dir-label">{title}</div>', unsafe_allow_html=True)
-                if not data:
-                    st.markdown('<div class="info-card"><div class="content-hand" style="font-size:16px; color:#718096;">暫無即時班次</div></div>', unsafe_allow_html=True)
-                else:
-                    for item in sorted(data, key=lambda x: x.get('EstimateTime', 999))[:1]:
-                        est = int(item.get('EstimateTime', 0))
-                        dest = item.get('DestinationStationName', {}).get('Zh_tw', '終點站')
-                        msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
-                        st.markdown(f'''<div class="info-card">
-                                    <div class="content-hand" style="color:{"#ff5252" if est <= 2 else "#ffffff"} !important;">{msg}</div>
-                                    <div style="font-size:13px; color:#ffd54f;">{label_txt} | 往 {dest}</div>
-                                    </div>''', unsafe_allow_html=True)
-
-            draw_board(d0, "🟢 順行方向", "順行")
-            draw_board(d1, "🔵 逆行方向", "逆行")
+            b_res = requests.get(f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON", 
+                                headers={'Authorization': f'Bearer {token}'}).json()
+            if b_res and len(b_res) > 0:
+                for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999))[:3]:
+                    est = int(item.get('EstimateTime', 0))
+                    dest = item.get('DestinationStationName', {}).get('Zh_tw', '終點站')
+                    dir_txt = "順行" if item.get('Direction') == 0 else "逆行"
+                    msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
+                    st.markdown(f'''<div class="info-card">
+                                <div class="content-hand" style="color:{"#ff5252" if est <= 2 else "#ffffff"} !important;">{msg}</div>
+                                <div style="font-size:14px; color:#ffd54f;">往 {dest} ({dir_txt})</div>
+                                </div>''', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="info-card"><div class="content-hand" style="font-size:18px; color:#718096;">目前無班次資訊</div></div>', unsafe_allow_html=True)
         except: pass
 
-    # --- 西元年月日與座標顯示 ---
+    # --- 修正時間與座標顯示 ---
     now = datetime.datetime.now(pytz.timezone('Asia/Taipei'))
     st.markdown(f'<div class="status-text">🕒 最後更新：{now.strftime("%Y/%m/%d %H:%M:%S")}</div>', unsafe_allow_html=True)
     if u_pos:
         st.markdown(f'<div class="status-text">🛰️ 目前座標：{u_pos[0]:.4f}, {u_pos[1]:.4f}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="status-text">⚠️ 座標定位中...請確保開啟 GPS</div>', unsafe_allow_html=True)
 
-# --- D. 作者留言與日誌 ---
+# --- D. 作者留言與技術日誌區 ---
 st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
 col_msg, col_log = st.columns([1, 1.2])
+
 with col_msg:
-    # 這裡放你原本要求的留言內容
     original_msg = "資料由 TDX 提供，順逆行邏輯已修正！" 
-    st.markdown(f'<div class="info-card"><div class="label-round">✍️ 作者留言</div><div class="content-hand" style="font-size: 20px;">{original_msg}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'''<div class="info-card">
+                <div class="label-round">✍️ 作者留言</div>
+                <div class="content-hand" style="font-size: 20px;">{original_msg}</div>
+                </div>''', unsafe_allow_html=True)
 
 with col_log:
-    st.markdown(f"""<div class="info-card"><div class="label-round">📦 系統日誌</div><div class="status-text">
-    • <b>全線清單：</b>已建置完整 C1-C37 資料庫。<br>
-    • <b>智慧分流：</b>修正順、逆行資料交叉混淆之邏輯錯誤。<br>
-    • <b>環境偵測：</b>新增 GPS 座標自動計算與最近車站跳轉。</div></div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div class="info-card">
+                <div class="label-round">📦 系統更新紀錄</div>
+                <div class="status-text" style="color:#cbd5e0;">
+                • <b>完整選單：</b>內建 C1-C37 車站清單，確保選單不缺失。<br>
+                • <b>自動定位：</b>計算經緯度距離，啟動即跳轉最近站點。<br>
+                • <b>標準時戳：</b>顯示西元年月日與即時 GPS 座標。</div>
+                </div>""", unsafe_allow_html=True)
 
 time.sleep(30)
 st.rerun()
