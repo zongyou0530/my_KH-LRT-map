@@ -32,21 +32,21 @@ st.markdown(f"""
     header {{ visibility: hidden; }}
     
     .block-container {{ 
-        padding-top: 6rem !important; /* 增加頂部距離，讓標題往下移 */
+        padding-top: 6rem !important; /* 增加頂部距離 */
         padding-bottom: 2rem !important;
     }}
 
-    /* 2. 標題：加大且換行，減少底部間距 */
+    /* 2. 標題：手寫體、加大且換行 */
     .header-title {{
         font-family: 'MyHand', sans-serif !important;
         font-size: 52px !important;
         color: #a5d6a7;
         text-align: center;
         line-height: 1.1;
-        margin-bottom: 10px !important; /* 縮小與圖例的距離 */
+        margin-bottom: 10px !important;
     }}
 
-    /* 3. 圖例：縮小高度，減少與地圖的距離 */
+    /* 3. 圖例：微縮、圓體 */
     .legend-container {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
         background-color: #1a1d23;
@@ -54,7 +54,7 @@ st.markdown(f"""
         border-radius: 15px;
         padding: 4px 12px;
         text-align: center;
-        margin: 0 auto 10px auto !important; /* 這裡縮小與地圖的間距 */
+        margin: 0 auto 10px auto !important;
         width: fit-content;
         font-size: 13px;
         color: #cccccc;
@@ -79,10 +79,10 @@ st.markdown(f"""
     .content-hand {{
         font-family: 'MyHand', sans-serif !important;
         font-size: 22px;
-        color: #ffffff;
+        color: #ffffff; /* 預設白色 */
     }}
 
-    /* 5. 更新紀錄：圓體置左 */
+    /* 5. 更新紀錄與說明文字：圓體置左 */
     .update-log-box {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
         font-size: 14px;
@@ -122,7 +122,6 @@ def get_tdx():
 col_map, col_info = st.columns([7, 3.5])
 
 with col_map:
-    # 地圖繪製邏輯
     center = user_pos if user_pos else [22.6593, 120.2868]
     m = folium.Map(location=center, zoom_start=15, tiles="cartodb voyager")
     
@@ -135,7 +134,7 @@ with col_map:
             folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], 
                           icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')).add_to(m)
         except: continue
-    folium_static(m, height=480, width=800) # 微縮地圖高度，讓版面更緊湊
+    folium_static(m, height=480, width=800)
 
 with col_info:
     st.markdown('<div class="label-round">🚉 選擇車站</div>', unsafe_allow_html=True)
@@ -151,7 +150,16 @@ with col_info:
                 for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999))[:2]:
                     est = int(item.get('EstimateTime', 0))
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
-                    st.markdown(f'<div class="info-card"><div class="label-round">預計抵達時間</div><div class="content-hand">{msg}</div></div>', unsafe_allow_html=True)
+                    
+                    # 紅字邏輯：小於等於 2 分鐘變紅
+                    text_style = 'color: #ff5252 !important;' if est <= 2 else 'color: #ffffff;'
+                    
+                    st.markdown(f'''
+                        <div class="info-card">
+                            <div class="label-round">預計抵達時間</div>
+                            <div class="content-hand" style="{text_style}">{msg}</div>
+                        </div>
+                    ''', unsafe_allow_html=True)
         except: pass
 
     now_t = datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime("%Y/%m/%d %H:%M:%S")
@@ -173,14 +181,15 @@ with col_msg:
     """, unsafe_allow_html=True)
 
 with col_log:
+    # 這裡將內容改回圓體 (update-log-box)，不使用手寫體
     st.markdown(f"""
     <div class="info-card">
         <div class="label-round">📦 最新更新內容說明：</div>
         <div class="update-log-box">
-            • 視覺垂直平移：增加頂部留白，解決標題與頂端過近的壓迫感。<br>
-            • 間距優化：大幅縮減圖例與地圖之間的無意義空白。<br>
-            • 版面平衡：縮小地圖高度與卡片內邊距，提升整體閱讀節奏。<br>
-            • 文字狀態補全：補回座標讀取狀態，並維持置左排列。
+            • 修正紅字顯示：當列車預計 2 分鐘內抵達或進站時，時間將顯示為紅色。<br>
+            • 字體優化：更新說明區塊統一使用「圓體」，僅重點資訊保留手寫體。<br>
+            • 版面微調：標題下移並縮小組件間距，優化手機觀看視野。<br>
+            • 功能維持：紅點定位、自動更新與即時進站看板皆穩定運作。
         </div>
     </div>
     """, unsafe_allow_html=True)
