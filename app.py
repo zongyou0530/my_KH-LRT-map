@@ -13,7 +13,7 @@ from streamlit_js_eval import get_geolocation
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide", initial_sidebar_state="collapsed")
 
-# --- A. 圓體字體強制載入（最高權限） ---
+# --- A. 手寫體檔案載入 (ZONGYOOOOOOU1.otf) ---
 font_path = "ZONGYOOOOOOU1.otf"
 font_css = ""
 if os.path.exists(font_path):
@@ -21,12 +21,12 @@ if os.path.exists(font_path):
         font_base64 = base64.b64encode(f.read()).decode()
     font_css = f"""
     @font-face {{
-        font-family: 'CircleFont';
+        font-family: 'ZongFont';
         src: url(data:font/otf;base64,{font_base64}) format('opentype');
     }}
-    /* 強制全網頁所有文字套用圓體 */
-    * {{
-        font-family: 'CircleFont' !important;
+    /* 全域強制套用手寫體 */
+    html, body, [class*="st-"], div, span, p, a, button, select, input {{
+        font-family: 'ZongFont' !important;
     }}
     """
 
@@ -34,18 +34,18 @@ st.markdown(f"""
 <style>
     {font_css}
     
-    /* 移除頂部空白與隱藏 header */
+    /* 修正頂部空白，隱藏 header */
     .block-container {{ padding-top: 0rem !important; padding-bottom: 0rem !important; }}
     header {{ visibility: hidden !important; }} 
     .stApp {{ background-color: #0e1117 !important; color: white !important; }}
     
-    /* 標題：兩行等大，強制圓體 */
+    /* 標題區：兩行必須等大，確保手寫體質感 */
     .custom-header {{ 
         font-size: 38px !important; 
         color: #a5d6a7 !important; 
         text-align: center; 
         margin: 15px 0px; 
-        line-height: 1.4 !important;
+        line-height: 1.3 !important;
         font-weight: normal !important;
     }}
 
@@ -57,8 +57,8 @@ st.markdown(f"""
         display: flex; 
         justify-content: center; 
         gap: 15px; 
-        border: 1px solid #30363d; 
-        font-size: 1.1em !important; 
+        border: 1px solid #30363d;
+        font-size: 1.1em !important;
     }}
 
     .info-card {{ 
@@ -70,17 +70,14 @@ st.markdown(f"""
     }}
     
     .card-label {{ color: #81c784; font-size: 18px !important; margin-bottom: 5px; }}
-    .card-content {{ font-size: 28px !important; color: #ffffff !important; }}
+    .card-content {{ font-size: 26px !important; color: #ffffff !important; }}
     .urgent-text {{ color: #ff5252 !important; }}
-    .status-text {{ font-size: 1em !important; color: #888; margin-top: 8px; }}
-    .log-text {{ font-size: 0.95em !important; color: #ccc; line-height: 1.6; }}
-
-    /* 修正下拉選單樣式 */
-    div[data-baseweb="select"] {{ font-family: 'CircleFont' !important; }}
+    .status-text {{ color: #888; font-size: 15px; margin-top: 8px; }}
+    .log-text {{ color: #ccc; font-size: 15px; line-height: 1.6; }}
 </style>
 """, unsafe_allow_html=True)
 
-# --- B. 數據與計算 ---
+# --- B. 數據處理 ---
 STATION_COORDS = {
     "C1 籬仔內": [22.6015, 120.3204], "C2 凱旋瑞田": [22.6026, 120.3168], "C3 前鎮之星": [22.6025, 120.3117], 
     "C4 凱旋中華": [22.6033, 120.3060], "C5 夢時代": [22.6000, 120.3061], "C6 經貿園區": [22.6052, 120.3021], 
@@ -113,7 +110,7 @@ def get_tdx():
         return (res.get('LivePositions', []) if isinstance(res, dict) else res), tk
     except: return [], None
 
-# --- C. 介面渲染 ---
+# --- C. 介面 ---
 st.markdown('<div class="custom-header">高雄輕軌<br>即時位置地圖</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-box"><span>🟢 順行</span><span>🔵 逆行</span><span>🔴 目前位置</span></div>', unsafe_allow_html=True)
 
@@ -172,11 +169,11 @@ st.markdown(f"""
 
 st.markdown(f"""
 <div class="info-card">
-    <div class="card-label">📦 版本更新紀錄 (V6.6)：</div>
+    <div class="card-label">📦 版本更新紀錄 (V6.8)：</div>
     <div class="log-text">
-        • <b>圓體回歸</b>：強制套用 CircleFont，確保所有文字顯示為圓潤圓體。<br>
-        • <b>標題一致</b>：高雄輕軌與即時位置地圖兩行等大對齊。<br>
-        • <b>自動更新</b>：維持每 30 秒自動刷新數據與位置。
+        • <b>手寫體還原</b>：確認 ZONGYOOOOOOU1.otf 為專屬手寫體並強制全頁面載入。<br>
+        • <b>標題一致性</b>：第一行與第二行標題字體大小統一為 38px。<br>
+        • <b>頂部間隙修正</b>：完全移除上方空白，讓標題正確置頂。
     </div>
 </div>
 """, unsafe_allow_html=True)
