@@ -13,35 +13,40 @@ from streamlit_js_eval import get_geolocation
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide", initial_sidebar_state="collapsed")
 
-# --- A. 字體與基礎樣式 (嚴格修復版) ---
+# --- A. 字體與基礎樣式 (最高權限強制套用) ---
 font_path = "ZONGYOOOOOOU1.otf"
 font_css = ""
 if os.path.exists(font_path):
     with open(font_path, "rb") as f:
         font_base64 = base64.b64encode(f.read()).decode()
-    font_css = f"@font-face {{ font-family: 'HandWrite'; src: url(data:font/otf;base64,{font_base64}) format('opentype'); }}"
+    font_css = f"""
+    @font-face {{
+        font-family: 'HandWrite';
+        src: url(data:font/otf;base64,{font_base64}) format('opentype');
+    }}
+    """
 
 st.markdown(f"""
 <style>
     {font_css}
-    /* 移除頂部空白與導覽列 */
+    
+    /* 移除所有預設空白 */
     .block-container {{ padding-top: 0rem !important; padding-bottom: 0rem !important; }}
     header {{ visibility: hidden !important; }} 
     .stApp {{ background-color: #0e1117 !important; color: white !important; }}
     
-    /* 標題樣式 */
+    /* 標題：強制使用手寫體，並嚴格控制兩行等大 */
     .custom-header {{ 
-        font-family: 'HandWrite', sans-serif !important; 
+        font-family: 'HandWrite' !important; 
         font-size: 38px !important; 
         color: #a5d6a7 !important; 
         text-align: center; 
-        margin: 10px 0px; 
-        line-height: 1.3; 
+        margin: 15px 0px; 
+        line-height: 1.4 !important; 
     }}
 
-    /* 圖例框樣式 */
     .legend-box {{ 
-        font-family: sans-serif !important; 
+        font-family: 'HandWrite' !important; 
         background-color: #1a1d23; 
         border-radius: 8px; 
         padding: 8px; 
@@ -50,10 +55,9 @@ st.markdown(f"""
         justify-content: center; 
         gap: 15px; 
         border: 1px solid #30363d; 
-        font-size: 0.9em; 
+        font-size: 1.1em !important; 
     }}
 
-    /* 資訊卡片樣式 */
     .info-card {{ 
         background-color: #1a1d23; 
         border: 1px solid #30363d; 
@@ -61,18 +65,39 @@ st.markdown(f"""
         padding: 15px; 
         margin-bottom: 12px; 
     }}
-    .card-label {{ color: #81c784; font-size: 16px; font-weight: bold; margin-bottom: 5px; }}
-    .card-content {{ font-family: 'HandWrite' !important; font-size: 26px; color: #ffffff; }}
-    .urgent-text {{ color: #ff5252 !important; font-weight: bold; }}
-    .status-text {{ font-size: 0.85em; color: #888; margin-top: 8px; line-height: 1.5; }}
     
-    /* 更新日誌樣式 */
-    .log-text {{ font-size: 0.9em; color: #ccc; line-height: 1.7; font-family: sans-serif; }}
-    b {{ color: #a5d6a7; }}
+    /* 卡片內容：強制所有文字使用圓體 */
+    .card-label {{ 
+        font-family: 'HandWrite' !important; 
+        color: #81c784; 
+        font-size: 18px !important; 
+        font-weight: bold; 
+        margin-bottom: 5px; 
+    }}
+    .card-content {{ 
+        font-family: 'HandWrite' !important; 
+        font-size: 28px !important; 
+        color: #ffffff !important; 
+    }}
+    .urgent-text {{ color: #ff5252 !important; }}
+    
+    .status-text {{ 
+        font-family: 'HandWrite' !important; 
+        font-size: 1em !important; 
+        color: #888; 
+        margin-top: 8px; 
+    }}
+    
+    .log-text {{ 
+        font-family: 'HandWrite' !important; 
+        font-size: 1em !important; 
+        color: #ccc; 
+        line-height: 1.6; 
+    }}
 </style>
 """, unsafe_allow_html=True)
 
-# --- B. 數據處理 ---
+# --- B. 數據 ---
 STATION_COORDS = {
     "C1 籬仔內": [22.6015, 120.3204], "C2 凱旋瑞田": [22.6026, 120.3168], "C3 前鎮之星": [22.6025, 120.3117], 
     "C4 凱旋中華": [22.6033, 120.3060], "C5 夢時代": [22.6000, 120.3061], "C6 經貿園區": [22.6052, 120.3021], 
@@ -119,10 +144,8 @@ if user_pos and 'nearest_st_idx' not in st.session_state:
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 決定地圖中心
     center_idx = st.session_state.get('nearest_st_idx', 24)
     map_center = list(STATION_COORDS.values())[center_idx]
-    
     m = folium.Map(location=map_center, zoom_start=15, tiles="cartodb voyager")
     if user_pos:
         folium.Circle(user_pos, radius=25, color='white', weight=2, fill=True, fill_color='red', fill_opacity=1).add_to(m)
@@ -157,30 +180,25 @@ with col_info:
     coords_txt = f"[{user_pos[0]:.4f}, {user_pos[1]:.4f}]" if user_pos else "定位中..."
     st.markdown(f'<div class="status-text">📍 更新時間：{now_t}<br>🛰️ 目前座標：{coords_txt}</div>', unsafe_allow_html=True)
 
-# --- D. 頁尾資訊 ---
 st.markdown('<hr style="border-top: 1px solid #30363d; margin: 20px 0;">', unsafe_allow_html=True)
 
-# 作者留言卡片
 st.markdown(f"""
 <div class="info-card">
     <div class="card-label">✍️ 作者留言：</div>
-    <div class="card-content" style="font-size: 1.1em;">各位親朋好友們，不準的話可以私訊 IG 跟我講，資料由 TDX 平台提供，僅供參考。</div>
+    <div class="card-content" style="font-size: 1.1em !important;">各位親朋好友們，不準的話可以私訊 IG 跟我講，資料由 TDX 平台提供，僅供參考。</div>
 </div>
 """, unsafe_allow_html=True)
 
-# 更新日誌卡片
 st.markdown(f"""
 <div class="info-card">
-    <div class="card-label">📦 版本更新紀錄 (V6.3)：</div>
+    <div class="card-label">📦 版本更新紀錄 (V6.4)：</div>
     <div class="log-text">
-        • <b>樣式救援</b>：修復 CSS 語法錯誤造成的背景跑版問題，找回深色質感卡片。<br>
-        • <b>視覺一致化</b>：統一標題與卡片的「手寫體」顯示，優化手機端排版。<br>
-        • <b>功能完善</b>：保留最近車站對焦、30秒自動刷新、即時座標顯示。<br>
-        • <b>穩定性提升</b>：修復所有已知 TypeError，確保頁面不紅屏。
+        • <b>字體修復</b>：移除備用字體，強制全頁面 100% 使用 ZONGYOOOOOOU1 手寫圓體。<br>
+        • <b>格式校準</b>：標題兩行比例嚴格鎖定，不再出現大小不一的情況。<br>
+        • <b>質感回歸</b>：重新載入卡片陰影與深色主題背景。
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# 自動更新
 time.sleep(30)
 st.rerun()
