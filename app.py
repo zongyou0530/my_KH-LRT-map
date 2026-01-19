@@ -182,11 +182,11 @@ with col_info:
 # --- F. 底部留言與更新 ---
 st.markdown(f"""
 <div class="info-card">
-    <div class="card-label">✍️ 作者留言：</div>
+    <div class="card-label"><b>✍️ 作者留言：<b></div>
     <div class="card-content" style="font-size: 1.2em;">各位親朋好友們，不準的話可以私訊 IG 跟我講，資料由 TDX 平台提供，僅供參考。</div>
 </div>
 <div class="info-card">
-    <div class="card-label">📦 版本更新紀錄 (V5.2)：</div>
+    <div class="card-label"><b>📦 版本更新紀錄 (V5.2)：<b></div>
     <div style="font-family: 'Zen Maru Gothic'; font-size: 14px; color: #abb2bf; line-height: 1.6;">
         • <b>紅色定位點修復</b>：解決定位點被遮擋問題，強制置頂顯示。<br>
         • <b>標題強化</b>：放大標題字體並優化手機換行顯示。<br>
