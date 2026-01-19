@@ -43,7 +43,7 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# --- B. 樣式修復 ---
+# --- B. 樣式修復 (V5.2 強效版) ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap');
@@ -51,52 +51,57 @@ st.markdown(f"""
     
     .stApp {{ background-color: #0e1117 !important; color: white !important; }}
 
-    /* 修正標題字體不對的問題 */
-    h1, .stMarkdown div p, .custom-title {{
-        font-family: 'HandWrite' !important;
-    }}
-
+    /* 標題：放大且允許換行 */
     .custom-title {{
-        font-size: clamp(28px, 8vw, 42px);
+        font-family: 'HandWrite' !important;
+        font-size: clamp(32px, 10vw, 56px);
         color: #a5d6a7;
         text-align: center;
-        margin: 20px 0;
+        margin: 25px 0;
+        line-height: 1.3;
+        font-weight: normal;
     }}
 
-    .legend-box {{ 
+    /* 圖例與卡片標題：圓體 */
+    .legend-box, .card-title {{ 
         font-family: 'Zen Maru Gothic' !important; 
         background-color: #1a1d23; border-radius: 12px; padding: 12px; margin-bottom: 20px; 
         display: flex; justify-content: center; gap: 15px; border: 1px solid #30363d;
     }}
 
-    .board-header {{ font-family: 'HandWrite' !important; font-size: 30px; color: #81c784; }}
-    .arrival-time {{ font-family: 'HandWrite' !important; font-size: 34px; color: #ffffff; }}
-
-    .footer-box {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 12px; padding: 18px; margin-top: 15px; }}
-    .author-text {{ font-family: 'HandWrite' !important; font-size: 1.4em; color: #abb2bf; }}
-    .version-text {{ font-family: 'Zen Maru Gothic' !important; font-size: 14px; color: #888; }}
-
-    /* 地圖紅色波源動畫 */
-    .gps-pulse {{
-        width: 15px; height: 15px; background: #ff5252; border-radius: 50%;
-        position: relative; box-shadow: 0 0 10px #ff5252;
+    /* 卡片通用排版 */
+    .info-card {{
+        background-color: #1a1d23;
+        border: 1px solid #30363d;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 15px;
     }}
-    .gps-pulse::after {{
-        content: ""; position: absolute; width: 100%; height: 100%;
-        border-radius: 50%; background: #ff5252; opacity: 0.8;
-        animation: sonar 1.5s infinite ease-out;
-    }}
+
+    .card-label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784; font-size: 18px; margin-bottom: 8px; }}
+    .card-content {{ font-family: 'HandWrite' !important; font-size: 32px; color: #ffffff; line-height: 1.2; }}
+    
+    /* 下拉選單 */
+    .stSelectbox label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784 !important; font-size: 18px !important; }}
+
+    /* 定位波源動畫 */
     @keyframes sonar {{
         0% {{ transform: scale(1); opacity: 0.8; }}
         100% {{ transform: scale(4); opacity: 0; }}
+    }}
+    .gps-marker {{
+        width: 16px; height: 16px; background: #ff5252; border-radius: 50%;
+        border: 2px solid white; position: relative;
+    }}
+    .gps-marker::after {{
+        content: ""; position: absolute; width: 100%; height: 100%;
+        border-radius: 50%; background: #ff5252;
+        animation: sonar 1.5s infinite ease-out; top: -2px; left: -2px; border: 2px solid transparent;
     }}
 </style>
 """, unsafe_allow_html=True)
 
 # --- C. 定位邏輯 ---
-if 'nearest_st_idx' not in st.session_state:
-    st.session_state.nearest_st_idx = 0
-
 user_pos = None
 loc = get_geolocation()
 if loc:
@@ -105,86 +110,87 @@ if loc:
     for i, (name, coord) in enumerate(STATION_COORDS.items()):
         dists.append((i, haversine(user_pos[0], user_pos[1], coord[0], coord[1])))
     st.session_state.nearest_st_idx = min(dists, key=lambda x: x[1])[0]
+elif 'nearest_st_idx' not in st.session_state:
+    st.session_state.nearest_st_idx = 0
 
-# --- D. API 數據處理 (確保圖標顯示) ---
+# --- D. API 數據 ---
 def get_tdx():
     try:
         cid = st.secrets["TD_ID_NEW"]
         csk = st.secrets["TD_SECRET_NEW"]
         tk = requests.post('https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token', 
                            data={'grant_type': 'client_credentials', 'client_id': cid, 'client_secret': csk}).json().get('access_token')
-        # 列車位置
-        pos_res = requests.get('https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON', 
-                               headers={'Authorization': f'Bearer {tk}'}).json()
-        # 容錯處理：API 可能回傳 List 或 Dict
-        pos_data = pos_res.get('LivePositions', []) if isinstance(pos_res, dict) else pos_res
+        res = requests.get('https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON', 
+                           headers={'Authorization': f'Bearer {tk}'}).json()
+        pos_data = res.get('LivePositions', []) if isinstance(res, dict) else res
         return pos_data, tk
     except: return [], None
 
 live_pos, token = get_tdx()
 
 # --- E. UI 渲染 ---
-st.markdown('<div class="custom-title">高雄輕軌 即時位置監測</div>', unsafe_allow_html=True)
+st.markdown('<div class="custom-title">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-box">🟢順行 | 🔵逆行 | 🔴目前位置</div>', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 使用 Voyager 底圖，路網最清楚且適合標記
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=13, tiles="cartodb voyager")
     
-    # 渲染目前位置
+    # 🔴 紅色定位點：強效顯示
     if user_pos:
         folium.Marker(
             location=user_pos,
-            icon=folium.DivIcon(html='<div class="gps-pulse"></div>')
+            icon=folium.DivIcon(html='<div class="gps-marker"></div>'),
+            z_index_offset=1000
         ).add_to(m)
+        folium.Circle(location=user_pos, radius=20, color="#ff5252", fill=True, opacity=0.3).add_to(m)
     
-    # 渲染列車圖標 (Icon 修復關鍵)
+    # 🚆 列車位置
     if live_pos:
         for t in live_pos:
-            lat = t.get('TrainPosition', {}).get('PositionLat')
-            lon = t.get('TrainPosition', {}).get('PositionLon')
-            if lat and lon:
-                folium.Marker(
-                    location=[lat, lon],
-                    icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa'),
-                    tooltip=f"方向: {'順行' if t.get('Direction')==0 else '逆行'}"
-                ).add_to(m)
-    folium_static(m, height=450, width=900)
+            coords = [t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']]
+            folium.Marker(
+                location=coords,
+                icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')
+            ).add_to(m)
+    folium_static(m, height=500, width=900)
 
 with col_info:
-    st.markdown('<div class="board-header">🚉 車站即時站牌</div>', unsafe_allow_html=True)
-    sel_st = st.selectbox("選擇車站", list(STATION_COORDS.keys()), index=st.session_state.nearest_st_idx)
+    st.markdown('<div class="card-label">🚉 選擇車站</div>', unsafe_allow_html=True)
+    sel_st = st.selectbox("車站列表", list(STATION_COORDS.keys()), index=st.session_state.nearest_st_idx, label_visibility="collapsed")
     tid = sel_st.split()[0]
 
     if token:
         try:
-            b_url = f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON"
-            b_res = requests.get(b_url, headers={'Authorization': f'Bearer {token}'}).json()
+            b_res = requests.get(f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON", 
+                                 headers={'Authorization': f'Bearer {token}'}).json()
             if b_res:
                 for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999)):
                     est = int(item.get('EstimateTime', 0))
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
-                    st.markdown(f'<div class="footer-box"><div class="arrival-time">{msg}</div></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="info-card"><div class="card-label">預計抵達時間</div><div class="card-content">{msg}</div></div>', unsafe_allow_html=True)
             else: st.info("⌛ 暫無列車資訊")
         except: pass
 
+    # 📍 更新時間區塊（含座標讀取）
     tz = pytz.timezone('Asia/Taipei')
-    st.markdown(f'<div style="font-size:0.9em; color:#888; margin-top:15px;">📍 更新：{datetime.datetime.now(tz).strftime("%Y/%m/%d %H:%M:%S")}</div>', unsafe_allow_html=True)
+    now_t = datetime.datetime.now(tz).strftime("%Y/%m/%d %H:%M:%S")
+    coords_txt = f"[{user_pos[0]:.6f}, {user_pos[1]:.6f}]" if user_pos else "定位中..."
+    st.markdown(f'<div style="font-size:0.9em; color:#888; margin-top:10px;">📍 更新時間：{now_t}<br>🛰️ 目前座標：{coords_txt}</div>', unsafe_allow_html=True)
 
-# --- F. 底部留言與紀錄 ---
+# --- F. 底部留言與更新 ---
 st.markdown(f"""
-<div class="footer-box">
-    <div class="board-header">✍️ 作者留言：</div>
-    <div class="author-text">各位親朋好友們，不準的話可以私訊IG跟我講，資料由 TDX 平台提供，僅供參考。</div>
+<div class="info-card">
+    <div class="card-label">✍️ 作者留言：</div>
+    <div class="card-content" style="font-size: 1.2em;">各位親朋好友們，不準的話可以私訊 IG 跟我講，資料由 TDX 平台提供，僅供參考。</div>
 </div>
-<div class="footer-box">
-    <div class="board-header">📦 版本更新紀錄 (V5.1)：</div>
-    <div class="version-text">
-        • <b>圖標修復</b>：解決地圖上列車圖示無法正常顯示的問題。<br>
-        • <b>字體強化</b>：修正標題手寫體失效與卡片字體跑版。<br>
-        • <b>底圖優化</b>：更換底圖以利辨識目前位置與列車位置。
+<div class="info-card">
+    <div class="card-label">📦 版本更新紀錄 (V5.2)：</div>
+    <div style="font-family: 'Zen Maru Gothic'; font-size: 14px; color: #abb2bf; line-height: 1.6;">
+        • <b>紅色定位點修復</b>：解決定位點被遮擋問題，強制置頂顯示。<br>
+        • <b>標題強化</b>：放大標題字體並優化手機換行顯示。<br>
+        • <b>排版對齊</b>：卡片標題統一圓體，內容維持手寫感，並補回座標資訊。
     </div>
 </div>
 """, unsafe_allow_html=True)
