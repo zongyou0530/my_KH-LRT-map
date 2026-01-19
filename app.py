@@ -13,7 +13,7 @@ from streamlit_js_eval import get_geolocation
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide", initial_sidebar_state="collapsed")
 
-# --- A. 字體與基礎樣式 (最高權限強制套用) ---
+# --- A. 圓體字體強制載入 ---
 font_path = "ZONGYOOOOOOU1.otf"
 font_css = ""
 if os.path.exists(font_path):
@@ -21,8 +21,14 @@ if os.path.exists(font_path):
         font_base64 = base64.b64encode(f.read()).decode()
     font_css = f"""
     @font-face {{
-        font-family: 'HandWrite';
+        font-family: 'MyCustomFont';
         src: url(data:font/otf;base64,{font_base64}) format('opentype');
+        font-weight: normal;
+        font-style: normal;
+    }}
+    /* 強制全域套用 */
+    * {{
+        font-family: 'MyCustomFont' !important;
     }}
     """
 
@@ -30,23 +36,21 @@ st.markdown(f"""
 <style>
     {font_css}
     
-    /* 移除所有預設空白 */
     .block-container {{ padding-top: 0rem !important; padding-bottom: 0rem !important; }}
     header {{ visibility: hidden !important; }} 
     .stApp {{ background-color: #0e1117 !important; color: white !important; }}
     
-    /* 標題：強制使用手寫體，並嚴格控制兩行等大 */
+    /* 標題設計：兩行字要一樣大，且不刪減字 */
     .custom-header {{ 
-        font-family: 'HandWrite' !important; 
         font-size: 38px !important; 
         color: #a5d6a7 !important; 
         text-align: center; 
         margin: 15px 0px; 
-        line-height: 1.4 !important; 
+        line-height: 1.4 !important;
+        font-weight: normal !important;
     }}
 
     .legend-box {{ 
-        font-family: 'HandWrite' !important; 
         background-color: #1a1d23; 
         border-radius: 8px; 
         padding: 8px; 
@@ -66,38 +70,37 @@ st.markdown(f"""
         margin-bottom: 12px; 
     }}
     
-    /* 卡片內容：強制所有文字使用圓體 */
     .card-label {{ 
-        font-family: 'HandWrite' !important; 
         color: #81c784; 
         font-size: 18px !important; 
-        font-weight: bold; 
         margin-bottom: 5px; 
     }}
     .card-content {{ 
-        font-family: 'HandWrite' !important; 
         font-size: 28px !important; 
         color: #ffffff !important; 
     }}
     .urgent-text {{ color: #ff5252 !important; }}
     
     .status-text {{ 
-        font-family: 'HandWrite' !important; 
         font-size: 1em !important; 
         color: #888; 
         margin-top: 8px; 
     }}
     
     .log-text {{ 
-        font-family: 'HandWrite' !important; 
-        font-size: 1em !important; 
+        font-size: 0.95em !important; 
         color: #ccc; 
         line-height: 1.6; 
+    }}
+    
+    /* 修正下拉選單的字體 */
+    div[data-baseweb="select"] {{
+        font-family: 'MyCustomFont' !important;
     }}
 </style>
 """, unsafe_allow_html=True)
 
-# --- B. 數據 ---
+# --- B. 座標與計算 ---
 STATION_COORDS = {
     "C1 籬仔內": [22.6015, 120.3204], "C2 凱旋瑞田": [22.6026, 120.3168], "C3 前鎮之星": [22.6025, 120.3117], 
     "C4 凱旋中華": [22.6033, 120.3060], "C5 夢時代": [22.6000, 120.3061], "C6 經貿園區": [22.6052, 120.3021], 
@@ -130,8 +133,8 @@ def get_tdx():
         return (res.get('LivePositions', []) if isinstance(res, dict) else res), tk
     except: return [], None
 
-# --- C. 介面與功能 ---
-st.markdown('<div class="custom-header">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
+# --- C. 介面 ---
+st.markdown('<div class="custom-header">高雄輕軌<br>即時位置地圖</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-box"><span>🟢 順行</span><span>🔵 逆行</span><span>🔴 目前位置</span></div>', unsafe_allow_html=True)
 
 loc = get_geolocation()
@@ -177,8 +180,7 @@ with col_info:
         except: pass
     
     now_t = datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime("%Y/%m/%d %H:%M:%S")
-    coords_txt = f"[{user_pos[0]:.4f}, {user_pos[1]:.4f}]" if user_pos else "定位中..."
-    st.markdown(f'<div class="status-text">📍 更新時間：{now_t}<br>🛰️ 目前座標：{coords_txt}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="status-text">📍 更新時間：{now_t}</div>', unsafe_allow_html=True)
 
 st.markdown('<hr style="border-top: 1px solid #30363d; margin: 20px 0;">', unsafe_allow_html=True)
 
@@ -191,11 +193,11 @@ st.markdown(f"""
 
 st.markdown(f"""
 <div class="info-card">
-    <div class="card-label">📦 版本更新紀錄 (V6.4)：</div>
+    <div class="card-label">📦 版本更新紀錄 (V6.5)：</div>
     <div class="log-text">
-        • <b>字體修復</b>：移除備用字體，強制全頁面 100% 使用 ZONGYOOOOOOU1 手寫圓體。<br>
-        • <b>格式校準</b>：標題兩行比例嚴格鎖定，不再出現大小不一的情況。<br>
-        • <b>質感回歸</b>：重新載入卡片陰影與深色主題背景。
+        • <b>圓體強制回歸</b>：鎖定 MyCustomFont，強制所有文字使用您的 OTF 檔案內容。<br>
+        • <b>標題格式校正</b>：第一行「高雄輕軌」，第二行「即時位置地圖」，字體等大。<br>
+        • <b>自動更新鎖定</b>：保持 30 秒自動刷新，確保位置即時性。
     </div>
 </div>
 """, unsafe_allow_html=True)
