@@ -40,7 +40,7 @@ STATION_COORDS = {
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371
     dlat, dlon = math.radians(lat2-lat1), math.radians(lon2-lon1)
-    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 st.markdown(f"""
@@ -49,38 +49,39 @@ st.markdown(f"""
     {font_css}
     .stApp {{ background-color: #0e1117 !important; color: white !important; }}
     
-    /* 1. 標題放大比例調整 (上4下6) */
-    .title-upper {{ font-family: 'HandWrite' !important; font-size: 32px; color: #a5d6a7; display: block; }}
-    .title-lower {{ font-family: 'HandWrite' !important; font-size: 48px; color: #a5d6a7; display: block; margin-top: -10px; }}
-    .title-container {{ text-align: center; margin: 20px 0; line-height: 1.2; }}
+    /* 標題嚴格格式：兩行等大，不刪減字 */
+    .custom-header {{ font-family: 'HandWrite' !important; font-size: 38px; color: #a5d6a7; text-align: center; margin: 10px 0; line-height: 1.4; }}
 
     .legend-box {{ font-family: 'Zen Maru Gothic' !important; background-color: #1a1d23; border-radius: 8px; padding: 8px; margin-bottom: 12px; display: flex; justify-content: center; gap: 10px; border: 1px solid #30363d; font-size: 0.8em; }}
-    
-    /* 輕薄型卡片 */
     .info-card {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 12px; padding: 10px 15px; margin-bottom: 10px; }}
-    
-    /* 4. 車站選擇器間距優化 */
-    .stSelectbox {{ margin: 15px 0 !important; }}
     .card-label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784; font-size: 16px; font-weight: bold; margin-bottom: 5px; }}
-    
     .card-content {{ font-family: 'HandWrite' !important; font-size: 24px; color: #ffffff; font-weight: normal !important; line-height: 1.2; }}
     .urgent-text {{ color: #ff5252 !important; font-weight: normal !important; }}
-
     .status-text {{ font-family: 'Zen Maru Gothic' !important; font-size: 0.85em; color: #888; margin-top: 8px; line-height: 1.5; }}
-    .divider {{ border: 0; height: 1px; background: #444; margin: 25px 0 15px 0; }}
+    .divider {{ border: 0; height: 1px; background: #444; margin: 20px 0; }}
 </style>
 """, unsafe_allow_html=True)
 
-# --- C. 定位與跳轉邏輯 (修正自動跳轉) ---
+# --- C. 定位與自動對焦最近車站 ---
 user_pos = None
+default_map_center = [22.6280, 120.3014]
 loc = get_geolocation()
+
 if loc:
     user_pos = [loc['coords']['latitude'], loc['coords']['longitude']]
+    # 計算最近車站索引
+    dists = []
+    for i, (name, coord) in enumerate(STATION_COORDS.items()):
+        dists.append((i, haversine(user_pos[0], user_pos[1], coord[0], coord[1])))
+    nearest_idx = min(dists, key=lambda x: x[1])[0]
+    
+    # 存入 session_state
     if 'nearest_st_idx' not in st.session_state:
-        dists = []
-        for i, (name, coord) in enumerate(STATION_COORDS.items()):
-            dists.append((i, haversine(user_pos[0], user_pos[1], coord[0], coord[1])))
-        st.session_state.nearest_st_idx = min(dists, key=lambda x: x[1])[0]
+        st.session_state.nearest_st_idx = nearest_idx
+    
+    # 地圖中心點設為最近車站的座標，確保「放大」在正確位置
+    nearest_station_name = list(STATION_COORDS.keys())[st.session_state.nearest_st_idx]
+    default_map_center = STATION_COORDS[nearest_station_name]
 
 # --- D. API 數據 ---
 def get_tdx():
@@ -98,14 +99,15 @@ def get_tdx():
 live_pos, token = get_tdx()
 
 # --- E. UI 渲染 ---
-# 1. 調整標題
-st.markdown('<div class="title-container"><span class="title-upper">高雄輕軌</span><span class="title-lower">即時監測</span></div>', unsafe_allow_html=True)
+# 1. 標題：還原您的格式
+st.markdown('<div class="custom-header">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-box">🟢順行 | 🔵逆行 | 🔴目前位置</div>', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    m = folium.Map(location=[22.6280, 120.3014], zoom_start=14, tiles="cartodb voyager")
+    # 地圖會對焦在「預設中心點」(如果有定位，就是最近車站)
+    m = folium.Map(location=default_map_center, zoom_start=15, tiles="cartodb voyager")
     if user_pos:
         folium.Circle(location=user_pos, radius=25, color='white', weight=2, fill=True, fill_color='red', fill_opacity=1, z_index_offset=1000).add_to(m)
         folium.Circle(location=user_pos, radius=150, color='red', weight=1, fill=True, fill_opacity=0.2).add_to(m)
@@ -116,14 +118,14 @@ with col_map:
                 coords = [t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']]
                 folium.Marker(coords, icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')).add_to(m)
             except: continue
-    folium_static(m, height=400, width=900)
+    folium_static(m, height=450, width=900)
 
 with col_info:
-    # 4. 優化後的車站選擇
     st.markdown('<div class="card-label">🚉 選擇車站</div>', unsafe_allow_html=True)
+    # 這裡會自動選取最近的車站
     sel_st = st.selectbox("車站", list(STATION_COORDS.keys()), 
                           index=st.session_state.get('nearest_st_idx', 0), 
-                          key="station_select", label_visibility="collapsed")
+                          key="st_select", label_visibility="collapsed")
     tid = sel_st.split()[0]
 
     if token:
@@ -139,7 +141,6 @@ with col_info:
             else: st.info("⌛ 暫無列車資訊")
         except: pass
 
-    # 2. 補回讀取座標資訊
     tz = pytz.timezone('Asia/Taipei')
     now_t = datetime.datetime.now(tz).strftime("%Y/%m/%d %H:%M:%S")
     coords_txt = f"[{user_pos[0]:.6f}, {user_pos[1]:.6f}]" if user_pos else "座標讀取中..."
@@ -154,5 +155,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# 找回自動更新邏輯：每 30 秒強制重整一次
 time.sleep(30)
 st.rerun()
