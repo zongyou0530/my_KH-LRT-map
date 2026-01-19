@@ -43,7 +43,7 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# --- B. 樣式修復 (V5.4 間距與波源優化) ---
+# --- B. 樣式修復 (V5.4 強化版) ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap');
@@ -54,7 +54,7 @@ st.markdown(f"""
     /* 標題放大 */
     .custom-title {{
         font-family: 'HandWrite' !important;
-        font-size: clamp(36px, 12vw, 62px);
+        font-size: clamp(38px, 12vw, 64px);
         color: #a5d6a7;
         text-align: center;
         margin: 30px 0;
@@ -67,36 +67,35 @@ st.markdown(f"""
         display: flex; justify-content: center; gap: 15px; border: 1px solid #30363d;
     }}
 
-    /* 卡片樣式與舒服的間距 */
+    /* 卡片樣式 */
     .info-card {{
         background-color: #1a1d23;
         border: 1px solid #444;
         border-radius: 15px;
         padding: 22px;
-        margin-top: 25px; /* 增加與上方區塊的間距 */
+        margin-top: 25px; /* 這裡增加間距 */
         margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }}
 
     .card-label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784; font-size: 20px; margin-bottom: 12px; font-weight: bold; }}
     .card-content {{ font-family: 'HandWrite' !important; font-size: 30px; color: #ffffff; line-height: 1.4; }}
     
-    /* 座標資訊區塊間距 */
+    /* 座標狀態文字 */
     .status-text {{
+        font-family: 'Zen Maru Gothic' !important;
         font-size: 0.95em; 
         color: #aaa; 
         margin-top: 15px; 
-        margin-bottom: 10px;
         line-height: 1.8;
     }}
 
-    /* 紅點波源強化：極其明顯 */
+    /* 紅點波源極大化 */
     @keyframes sonar {{
         0% {{ transform: scale(1); opacity: 1; }}
         100% {{ transform: scale(10); opacity: 0; }}
     }}
     .gps-marker {{
-        width: 22px; height: 22px; background: #ff1f1f; border-radius: 50%;
+        width: 24px; height: 24px; background: #ff1f1f; border-radius: 50%;
         border: 3px solid #fff; position: relative; box-shadow: 0 0 15px #ff1f1f;
     }}
     .gps-marker::after {{
@@ -139,10 +138,7 @@ st.markdown('<div class="legend-box">🟢順行 | 🔵逆行 | 🔴目前位置<
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 確保地圖基底始終存在
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=13, tiles="cartodb voyager")
-    
-    # 🔴 紅點定位：絕對置頂
     if user_pos:
         folium.Marker(
             location=user_pos,
@@ -150,14 +146,12 @@ with col_map:
             z_index_offset=3000
         ).add_to(m)
     
-    # 🚆 列車渲染
     if live_pos:
         for t in live_pos:
             try:
                 coords = [t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']]
                 folium.Marker(coords, icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')).add_to(m)
             except: continue
-    
     folium_static(m, height=500, width=900)
 
 with col_info:
@@ -177,29 +171,23 @@ with col_info:
             else: st.info("⌛ 暫無列車資訊")
         except: pass
 
-    # 📍 更新時間與座標 (間距已優化)
     tz = pytz.timezone('Asia/Taipei')
     now_t = datetime.datetime.now(tz).strftime("%Y/%m/%d %H:%M:%S")
     coords_txt = f"[{user_pos[0]:.6f}, {user_pos[1]:.6f}]" if user_pos else "讀取中..."
-    st.markdown(f'''
-    <div class="status-text">
-        📍 更新時間：{now_t}<br>
-        🛰️ 目前座標：{coords_txt}
-    </div>
-    ''', unsafe_allow_html=True)
+    st.markdown(f'<div class="status-text">📍 更新時間：{now_t}<br>🛰️ 目前座標：{coords_txt}</div>', unsafe_allow_html=True)
 
 # --- F. 底部留言與更新 ---
 st.markdown(f"""
 <div class="info-card">
-    <div class="card-label">✍️ 作者留言：</div>
+    <div class="card-label"><b>✍️ 作者留言：</b></div>
     <div class="card-content" style="font-size: 1.3em;">各位親朋好友們，不準的話可以私訊 IG 跟我講，資料由 TDX 平台提供，僅供參考。</div>
 </div>
 <div class="info-card">
-    <div class="card-label">📦 版本更新紀錄 (V5.4)：</div>
+    <div class="card-label"><b>📦 版本更新紀錄 (V5.4)：</b></div>
     <div style="font-family: 'Zen Maru Gothic'; font-size: 15px; color: #abb2bf; line-height: 1.8;">
-        • <b>版面間距優化</b>：在座標讀取與下方卡片間增加 25px 間距，視覺更舒適。<br>
-        • <b>地圖渲染強化</b>：修復圖標偶爾消失的問題，確保地圖組件穩定載入。<br>
-        • <b>定位波源極大化</b>：波紋擴散範圍提升，且增加紅點陰影以提升辨識度。
+        • <b>版面間距優化</b>：在座標讀取與下方卡片間增加顯著間距，提升觀感。<br>
+        • <b>定位波源強化</b>：紅點核心與波紋範圍極大化，確保地圖顯示清晰。<br>
+        • <b>樣式修正</b>：修復標籤閉合問題，標題與內文字體粗細已恢復正常。
     </div>
 </div>
 """, unsafe_allow_html=True)
