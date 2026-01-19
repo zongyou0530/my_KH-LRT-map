@@ -48,33 +48,39 @@ st.markdown(f"""
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap');
     {font_css}
     .stApp {{ background-color: #0e1117 !important; color: white !important; }}
-    .custom-title {{ font-family: 'HandWrite' !important; font-size: 36px; color: #a5d6a7; text-align: center; margin: 15px 0; }}
+    
+    /* 1. 標題放大比例調整 (上4下6) */
+    .title-upper {{ font-family: 'HandWrite' !important; font-size: 32px; color: #a5d6a7; display: block; }}
+    .title-lower {{ font-family: 'HandWrite' !important; font-size: 48px; color: #a5d6a7; display: block; margin-top: -10px; }}
+    .title-container {{ text-align: center; margin: 20px 0; line-height: 1.2; }}
+
     .legend-box {{ font-family: 'Zen Maru Gothic' !important; background-color: #1a1d23; border-radius: 8px; padding: 8px; margin-bottom: 12px; display: flex; justify-content: center; gap: 10px; border: 1px solid #30363d; font-size: 0.8em; }}
     
     /* 輕薄型卡片 */
     .info-card {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 12px; padding: 10px 15px; margin-bottom: 10px; }}
-    .card-label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784; font-size: 15px; font-weight: bold; }}
     
-    /* 手寫體內容：絕不加粗，大小適中 */
+    /* 4. 車站選擇器間距優化 */
+    .stSelectbox {{ margin: 15px 0 !important; }}
+    .card-label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784; font-size: 16px; font-weight: bold; margin-bottom: 5px; }}
+    
     .card-content {{ font-family: 'HandWrite' !important; font-size: 24px; color: #ffffff; font-weight: normal !important; line-height: 1.2; }}
     .urgent-text {{ color: #ff5252 !important; font-weight: normal !important; }}
 
-    .status-text {{ font-family: 'Zen Maru Gothic' !important; font-size: 0.8em; color: #888; margin-top: 5px; }}
-    
-    /* 分隔橫線 */
+    .status-text {{ font-family: 'Zen Maru Gothic' !important; font-size: 0.85em; color: #888; margin-top: 8px; line-height: 1.5; }}
     .divider {{ border: 0; height: 1px; background: #444; margin: 25px 0 15px 0; }}
 </style>
 """, unsafe_allow_html=True)
 
-# --- C. 定位邏輯 ---
+# --- C. 定位與跳轉邏輯 (修正自動跳轉) ---
 user_pos = None
 loc = get_geolocation()
 if loc:
     user_pos = [loc['coords']['latitude'], loc['coords']['longitude']]
-    dists = []
-    for i, (name, coord) in enumerate(STATION_COORDS.items()):
-        dists.append((i, haversine(user_pos[0], user_pos[1], coord[0], coord[1])))
-    st.session_state.nearest_st_idx = min(dists, key=lambda x: x[1])[0]
+    if 'nearest_st_idx' not in st.session_state:
+        dists = []
+        for i, (name, coord) in enumerate(STATION_COORDS.items()):
+            dists.append((i, haversine(user_pos[0], user_pos[1], coord[0], coord[1])))
+        st.session_state.nearest_st_idx = min(dists, key=lambda x: x[1])[0]
 
 # --- D. API 數據 ---
 def get_tdx():
@@ -92,36 +98,17 @@ def get_tdx():
 live_pos, token = get_tdx()
 
 # --- E. UI 渲染 ---
-st.markdown('<div class="custom-title">高雄輕軌 即時監測</div>', unsafe_allow_html=True)
+# 1. 調整標題
+st.markdown('<div class="title-container"><span class="title-upper">高雄輕軌</span><span class="title-lower">即時監測</span></div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-box">🟢順行 | 🔵逆行 | 🔴目前位置</div>', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 這裡調整地圖初始點與縮放
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=14, tiles="cartodb voyager")
-    
-    # 🔴 強制渲染紅點：改用 Circle 確保在手機端 Canvas 顯示成功
     if user_pos:
-        folium.Circle(
-            location=user_pos,
-            radius=25,
-            color='white',
-            weight=2,
-            fill=True,
-            fill_color='red',
-            fill_opacity=1,
-            z_index_offset=1000
-        ).add_to(m)
-        # 增加一個大的半透明波紋圓圈
-        folium.Circle(
-            location=user_pos,
-            radius=150,
-            color='red',
-            weight=1,
-            fill=True,
-            fill_opacity=0.2
-        ).add_to(m)
+        folium.Circle(location=user_pos, radius=25, color='white', weight=2, fill=True, fill_color='red', fill_opacity=1, z_index_offset=1000).add_to(m)
+        folium.Circle(location=user_pos, radius=150, color='red', weight=1, fill=True, fill_opacity=0.2).add_to(m)
     
     if live_pos:
         for t in live_pos:
@@ -132,8 +119,11 @@ with col_map:
     folium_static(m, height=400, width=900)
 
 with col_info:
+    # 4. 優化後的車站選擇
     st.markdown('<div class="card-label">🚉 選擇車站</div>', unsafe_allow_html=True)
-    sel_st = st.selectbox("車站", list(STATION_COORDS.keys()), index=st.session_state.get('nearest_st_idx', 0), label_visibility="collapsed")
+    sel_st = st.selectbox("車站", list(STATION_COORDS.keys()), 
+                          index=st.session_state.get('nearest_st_idx', 0), 
+                          key="station_select", label_visibility="collapsed")
     tid = sel_st.split()[0]
 
     if token:
@@ -144,19 +134,19 @@ with col_info:
                 for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999)):
                     est = int(item.get('EstimateTime', 0))
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
-                    # 🔴 判斷是否變紅
                     text_style = "urgent-text" if est <= 2 else ""
                     st.markdown(f'<div class="info-card"><div class="card-label">預計抵達時間</div><div class="card-content {text_style}">{msg}</div></div>', unsafe_allow_html=True)
             else: st.info("⌛ 暫無列車資訊")
         except: pass
 
+    # 2. 補回讀取座標資訊
     tz = pytz.timezone('Asia/Taipei')
     now_t = datetime.datetime.now(tz).strftime("%Y/%m/%d %H:%M:%S")
-    st.markdown(f'<div class="status-text">📍 更新時間：{now_t}</div>', unsafe_allow_html=True)
+    coords_txt = f"[{user_pos[0]:.6f}, {user_pos[1]:.6f}]" if user_pos else "座標讀取中..."
+    st.markdown(f'<div class="status-text">📍 更新時間：{now_t}<br>🛰️ 目前座標：{coords_txt}</div>', unsafe_allow_html=True)
 
 # --- F. 橫線與底部留言 ---
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
-
 st.markdown(f"""
 <div class="info-card">
     <div class="card-label">✍️ 作者留言：</div>
