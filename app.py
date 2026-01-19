@@ -13,7 +13,7 @@ from streamlit_js_eval import get_geolocation
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide", initial_sidebar_state="collapsed")
 
-# --- A. 字體處理 ---
+# --- A. 字體與基礎樣式 ---
 font_path = "ZONGYOOOOOOU1.otf"
 font_css = ""
 if os.path.exists(font_path):
@@ -43,76 +43,26 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# --- B. 樣式修復 (V5.6 精簡與層級修正) ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap');
     {font_css}
-    
     .stApp {{ background-color: #0e1117 !important; color: white !important; }}
-
-    .custom-title {{
-        font-family: 'HandWrite' !important;
-        font-size: clamp(32px, 10vw, 50px);
-        color: #a5d6a7;
-        text-align: center;
-        margin: 15px 0;
-        line-height: 1.2;
-    }}
-
-    .legend-box {{ 
-        font-family: 'Zen Maru Gothic' !important; 
-        background-color: #1a1d23; border-radius: 8px; padding: 8px; margin-bottom: 12px; 
-        display: flex; justify-content: center; gap: 10px; border: 1px solid #30363d; font-size: 0.85em;
-    }}
-
-    /* 精簡版卡片 */
-    .info-card {{
-        background-color: #1a1d23;
-        border: 1px solid #30363d;
-        border-radius: 12px;
-        padding: 10px 15px;
-        margin-bottom: 8px;
-    }}
-
-    .card-label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784; font-size: 16px; font-weight: bold; margin-bottom: 2px; }}
+    .custom-title {{ font-family: 'HandWrite' !important; font-size: 36px; color: #a5d6a7; text-align: center; margin: 15px 0; }}
+    .legend-box {{ font-family: 'Zen Maru Gothic' !important; background-color: #1a1d23; border-radius: 8px; padding: 8px; margin-bottom: 12px; display: flex; justify-content: center; gap: 10px; border: 1px solid #30363d; font-size: 0.8em; }}
     
-    /* 手寫體內容：絕不加粗 */
-    .card-content {{ 
-        font-family: 'HandWrite' !important; 
-        font-size: 24px; 
-        color: #ffffff; 
-        font-weight: normal !important; 
-        line-height: 1.2;
-    }}
+    /* 輕薄型卡片 */
+    .info-card {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 12px; padding: 10px 15px; margin-bottom: 10px; }}
+    .card-label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784; font-size: 15px; font-weight: bold; }}
     
-    /* 緊急變色邏輯 */
-    .time-urgent {{ color: #ff5252 !important; }}
+    /* 手寫體內容：絕不加粗，大小適中 */
+    .card-content {{ font-family: 'HandWrite' !important; font-size: 24px; color: #ffffff; font-weight: normal !important; line-height: 1.2; }}
+    .urgent-text {{ color: #ff5252 !important; font-weight: normal !important; }}
 
-    .status-text {{ font-family: 'Zen Maru Gothic' !important; font-size: 0.85em; color: #aaa; margin: 12px 0; line-height: 1.6; }}
-
-    /* 自定義分區橫線 */
-    .section-divider {{
-        border: 0;
-        height: 1px;
-        background: #30363d;
-        margin: 20px 0;
-    }}
-
-    /* 紅點動畫強化 */
-    @keyframes sonar {{
-        0% {{ transform: scale(1); opacity: 1; }}
-        100% {{ transform: scale(6); opacity: 0; }}
-    }}
-    .gps-container {{ position: relative; width: 16px; height: 16px; z-index: 9999; }}
-    .gps-dot {{
-        width: 16px; height: 16px; background: #ff1f1f; border-radius: 50%;
-        border: 2px solid #fff; position: absolute;
-    }}
-    .gps-wave {{
-        width: 16px; height: 16px; background: #ff1f1f; border-radius: 50%;
-        position: absolute; animation: sonar 1.2s infinite ease-out;
-    }}
+    .status-text {{ font-family: 'Zen Maru Gothic' !important; font-size: 0.8em; color: #888; margin-top: 5px; }}
+    
+    /* 分隔橫線 */
+    .divider {{ border: 0; height: 1px; background: #444; margin: 25px 0 15px 0; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -142,20 +92,35 @@ def get_tdx():
 live_pos, token = get_tdx()
 
 # --- E. UI 渲染 ---
-st.markdown('<div class="custom-title">高雄輕軌 即時位置監測</div>', unsafe_allow_html=True)
+st.markdown('<div class="custom-title">高雄輕軌 即時監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-box">🟢順行 | 🔵逆行 | 🔴目前位置</div>', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
+    # 這裡調整地圖初始點與縮放
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=14, tiles="cartodb voyager")
     
-    # 🔴 紅點定位：改用極致置頂方案
+    # 🔴 強制渲染紅點：改用 Circle 確保在手機端 Canvas 顯示成功
     if user_pos:
-        folium.Marker(
+        folium.Circle(
             location=user_pos,
-            icon=folium.DivIcon(html='<div class="gps-container"><div class="gps-wave"></div><div class="gps-dot"></div></div>'),
-            z_index_offset=10000 # 設為一萬，絕對最前
+            radius=25,
+            color='white',
+            weight=2,
+            fill=True,
+            fill_color='red',
+            fill_opacity=1,
+            z_index_offset=1000
+        ).add_to(m)
+        # 增加一個大的半透明波紋圓圈
+        folium.Circle(
+            location=user_pos,
+            radius=150,
+            color='red',
+            weight=1,
+            fill=True,
+            fill_opacity=0.2
         ).add_to(m)
     
     if live_pos:
@@ -164,11 +129,11 @@ with col_map:
                 coords = [t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']]
                 folium.Marker(coords, icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')).add_to(m)
             except: continue
-    folium_static(m, height=450, width=900)
+    folium_static(m, height=400, width=900)
 
 with col_info:
     st.markdown('<div class="card-label">🚉 選擇車站</div>', unsafe_allow_html=True)
-    sel_st = st.selectbox("車站列表", list(STATION_COORDS.keys()), index=st.session_state.get('nearest_st_idx', 0), label_visibility="collapsed")
+    sel_st = st.selectbox("車站", list(STATION_COORDS.keys()), index=st.session_state.get('nearest_st_idx', 0), label_visibility="collapsed")
     tid = sel_st.split()[0]
 
     if token:
@@ -179,37 +144,23 @@ with col_info:
                 for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999)):
                     est = int(item.get('EstimateTime', 0))
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
-                    # 🔴 變色邏輯：小於等於 2 分鐘變紅
-                    urgent_style = 'time-urgent' if est <= 2 else ''
-                    st.markdown(f'''
-                        <div class="info-card">
-                            <div class="card-label">預計抵達時間</div>
-                            <div class="card-content {urgent_style}">{msg}</div>
-                        </div>
-                    ''', unsafe_allow_html=True)
+                    # 🔴 判斷是否變紅
+                    text_style = "urgent-text" if est <= 2 else ""
+                    st.markdown(f'<div class="info-card"><div class="card-label">預計抵達時間</div><div class="card-content {text_style}">{msg}</div></div>', unsafe_allow_html=True)
             else: st.info("⌛ 暫無列車資訊")
         except: pass
 
     tz = pytz.timezone('Asia/Taipei')
     now_t = datetime.datetime.now(tz).strftime("%Y/%m/%d %H:%M:%S")
-    coords_txt = f"[{user_pos[0]:.6f}, {user_pos[1]:.6f}]" if user_pos else "座標讀取中..."
-    st.markdown(f'<div class="status-text">📍 更新時間：{now_t}<br>🛰️ 目前座標：{coords_txt}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="status-text">📍 更新時間：{now_t}</div>', unsafe_allow_html=True)
 
-# --- F. 底部留言區 (加入分隔橫線) ---
-st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+# --- F. 橫線與底部留言 ---
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
 st.markdown(f"""
 <div class="info-card">
     <div class="card-label">✍️ 作者留言：</div>
     <div class="card-content" style="font-size: 1.1em;">各位親朋好友們，不準的話可以私訊 IG 跟我講，資料由 TDX 平台提供，僅供參考。</div>
-</div>
-<div class="info-card">
-    <div class="card-label">📦 版本更新紀錄 (V5.6)：</div>
-    <div style="font-family: 'Zen Maru Gothic'; font-size: 13px; color: #abb2bf; line-height: 1.6;">
-        • <b>層級區隔強化</b>：在即時資訊與底部留言間加入橫線，優化視覺流向。<br>
-        • <b>紅點強制置頂</b>：將 z-index 提升至 10000，解決部分裝置看不到紅點的問題。<br>
-        • <b>手寫體優化</b>：移除卡片內文加粗，縮小卡片體積。
-    </div>
 </div>
 """, unsafe_allow_html=True)
 
