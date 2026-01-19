@@ -43,7 +43,7 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# --- B. 樣式修復 (V5.4 強化版) ---
+# --- B. 樣式修復 (V5.5 精簡卡片與定位修正) ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap');
@@ -51,57 +51,53 @@ st.markdown(f"""
     
     .stApp {{ background-color: #0e1117 !important; color: white !important; }}
 
-    /* 標題放大 */
+    /* 標題 */
     .custom-title {{
         font-family: 'HandWrite' !important;
-        font-size: clamp(38px, 12vw, 64px);
+        font-size: clamp(34px, 10vw, 54px);
         color: #a5d6a7;
         text-align: center;
-        margin: 30px 0;
+        margin: 20px 0;
         line-height: 1.2;
     }}
 
     .legend-box {{ 
         font-family: 'Zen Maru Gothic' !important; 
-        background-color: #1a1d23; border-radius: 12px; padding: 12px; margin-bottom: 25px; 
-        display: flex; justify-content: center; gap: 15px; border: 1px solid #30363d;
+        background-color: #1a1d23; border-radius: 10px; padding: 8px; margin-bottom: 15px; 
+        display: flex; justify-content: center; gap: 10px; border: 1px solid #30363d; font-size: 0.9em;
     }}
 
-    /* 卡片樣式 */
+    /* 縮小後的卡片 */
     .info-card {{
         background-color: #1a1d23;
-        border: 1px solid #444;
-        border-radius: 15px;
-        padding: 22px;
-        margin-top: 25px; /* 這裡增加間距 */
-        margin-bottom: 20px;
+        border: 1px solid #30363d;
+        border-radius: 12px;
+        padding: 12px 18px; /* 大幅縮小 padding */
+        margin-top: 15px;
+        margin-bottom: 10px;
     }}
 
-    .card-label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784; font-size: 20px; margin-bottom: 12px; font-weight: bold; }}
-    .card-content {{ font-family: 'HandWrite' !important; font-size: 30px; color: #ffffff; line-height: 1.4; }}
+    .card-label {{ font-family: 'Zen Maru Gothic' !important; color: #81c784; font-size: 17px; margin-bottom: 4px; font-weight: bold; }}
     
-    /* 座標狀態文字 */
-    .status-text {{
-        font-family: 'Zen Maru Gothic' !important;
-        font-size: 0.95em; 
-        color: #aaa; 
-        margin-top: 15px; 
-        line-height: 1.8;
-    }}
+    /* 手寫體內容：縮小、不加粗 */
+    .card-content {{ font-family: 'HandWrite' !important; font-size: 26px; color: #ffffff; line-height: 1.2; font-weight: normal !important; }}
+    .time-urgent {{ color: #ff5252 !important; font-weight: normal !important; }} /* 緊急變紅色 */
 
-    /* 紅點波源極大化 */
+    .status-text {{ font-family: 'Zen Maru Gothic' !important; font-size: 0.85em; color: #aaa; margin-top: 10px; line-height: 1.6; }}
+
+    /* 定位點強制修正 */
     @keyframes sonar {{
         0% {{ transform: scale(1); opacity: 1; }}
-        100% {{ transform: scale(10); opacity: 0; }}
+        100% {{ transform: scale(8); opacity: 0; }}
     }}
-    .gps-marker {{
-        width: 24px; height: 24px; background: #ff1f1f; border-radius: 50%;
-        border: 3px solid #fff; position: relative; box-shadow: 0 0 15px #ff1f1f;
+    .gps-container {{ position: relative; width: 20px; height: 20px; }}
+    .gps-dot {{
+        width: 18px; height: 18px; background: #ff1f1f; border-radius: 50%;
+        border: 2px solid #fff; position: absolute; z-index: 9999 !important;
     }}
-    .gps-marker::after {{
-        content: ""; position: absolute; width: 100%; height: 100%;
-        border-radius: 50%; background: #ff1f1f;
-        animation: sonar 1.0s infinite ease-out; top: -3px; left: -3px;
+    .gps-wave {{
+        width: 18px; height: 18px; background: #ff1f1f; border-radius: 50%;
+        position: absolute; animation: sonar 1.2s infinite ease-out; z-index: 9998 !important;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -138,12 +134,15 @@ st.markdown('<div class="legend-box">🟢順行 | 🔵逆行 | 🔴目前位置<
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
+    # 增加初始縮放，讓使用者更容易看到自己
     m = folium.Map(location=[22.6280, 120.3014], zoom_start=13, tiles="cartodb voyager")
+    
     if user_pos:
+        # 使用自定義 DivIcon 確保 z-index 最高
         folium.Marker(
             location=user_pos,
-            icon=folium.DivIcon(html='<div class="gps-marker"></div>'),
-            z_index_offset=3000
+            icon=folium.DivIcon(html='<div class="gps-container"><div class="gps-wave"></div><div class="gps-dot"></div></div>'),
+            z_index_offset=5000
         ).add_to(m)
     
     if live_pos:
@@ -152,7 +151,7 @@ with col_map:
                 coords = [t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']]
                 folium.Marker(coords, icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')).add_to(m)
             except: continue
-    folium_static(m, height=500, width=900)
+    folium_static(m, height=450, width=900)
 
 with col_info:
     st.markdown('<div class="card-label">🚉 選擇車站</div>', unsafe_allow_html=True)
@@ -167,28 +166,27 @@ with col_info:
                 for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999)):
                     est = int(item.get('EstimateTime', 0))
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
-                    st.markdown(f'<div class="info-card" style="margin-top:10px;"><div class="card-label">預計抵達時間</div><div class="card-content">{msg}</div></div>', unsafe_allow_html=True)
+                    # 🔴 判斷是否變色
+                    urgent_class = 'time-urgent' if est <= 2 else ''
+                    st.markdown(f'''
+                        <div class="info-card">
+                            <div class="card-label">預計抵達時間</div>
+                            <div class="card-content {urgent_class}">{msg}</div>
+                        </div>
+                    ''', unsafe_allow_html=True)
             else: st.info("⌛ 暫無列車資訊")
         except: pass
 
     tz = pytz.timezone('Asia/Taipei')
     now_t = datetime.datetime.now(tz).strftime("%Y/%m/%d %H:%M:%S")
-    coords_txt = f"[{user_pos[0]:.6f}, {user_pos[1]:.6f}]" if user_pos else "讀取中..."
+    coords_txt = f"[{user_pos[0]:.6f}, {user_pos[1]:.6f}]" if user_pos else "座標讀取失敗，請開啟GPS"
     st.markdown(f'<div class="status-text">📍 更新時間：{now_t}<br>🛰️ 目前座標：{coords_txt}</div>', unsafe_allow_html=True)
 
-# --- F. 底部留言與更新 ---
+# --- F. 底部留言 ---
 st.markdown(f"""
 <div class="info-card">
-    <div class="card-label"><b>✍️ 作者留言：</b></div>
-    <div class="card-content" style="font-size: 1.3em;">各位親朋好友們，不準的話可以私訊 IG 跟我講，資料由 TDX 平台提供，僅供參考。</div>
-</div>
-<div class="info-card">
-    <div class="card-label"><b>📦 版本更新紀錄 (V5.4)：</b></div>
-    <div style="font-family: 'Zen Maru Gothic'; font-size: 15px; color: #abb2bf; line-height: 1.8;">
-        • <b>版面間距優化</b>：在座標讀取與下方卡片間增加顯著間距，提升觀感。<br>
-        • <b>定位波源強化</b>：紅點核心與波紋範圍極大化，確保地圖顯示清晰。<br>
-        • <b>樣式修正</b>：修復標籤閉合問題，標題與內文字體粗細已恢復正常。
-    </div>
+    <div class="card-label">✍️ 作者留言：</div>
+    <div class="card-content" style="font-size: 1.1em;">各位親朋好友們，不準的話可以私訊 IG 跟我講，資料由 TDX 平台提供，僅供參考。</div>
 </div>
 """, unsafe_allow_html=True)
 
