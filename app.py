@@ -7,11 +7,13 @@ import os
 import time
 import datetime
 import pytz
+import math
+from streamlit_js_eval import get_geolocation
 
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測", layout="wide", initial_sidebar_state="collapsed")
 
-# --- A. 字體與視覺樣式 ---
+# --- A. 字體載入 ---
 font_path = "ZONGYOOOOOOU1.otf"
 hand_base64 = ""
 if os.path.exists(font_path):
@@ -20,92 +22,89 @@ if os.path.exists(font_path):
 
 st.markdown(f"""
 <style>
-    /* 載入圓體 */
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap');
-    
-    /* 定義手寫體 */
     @font-face {{
         font-family: 'MyHand';
         src: url(data:font/otf;base64,{hand_base64}) format('opentype');
     }}
 
-    /* 全域背景 */
     .stApp {{ background-color: #0e1117; color: white; }}
     header {{ visibility: hidden; }}
-    
-    /* 主容器間距控制 */
-    .block-container {{ 
-        padding-top: 3rem !important; 
-        max-width: 1200px;
-    }}
+    .block-container {{ padding-top: 2rem !important; }}
 
-    /* 1. 標題：手寫體，往下移動 */
+    /* 標題：放大且換行 */
     .header-title {{
         font-family: 'MyHand', sans-serif !important;
-        font-size: 34px;
+        font-size: 52px !important; /* 加大標題 */
         color: #a5d6a7;
         text-align: center;
-        margin-bottom: 25px;
-        letter-spacing: 2px;
+        line-height: 1.1 !important;
+        margin-bottom: 20px;
     }}
 
-    /* 2. 圖例：微縮、圓體、精簡化 */
+    /* 圖例列：縮小 */
     .legend-container {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
         background-color: #1a1d23;
         border: 1px solid #30363d;
-        border-radius: 20px;
-        padding: 5px 15px;
+        border-radius: 15px;
+        padding: 4px 12px;
         text-align: center;
-        margin: 0 auto 15px auto;
+        margin: 0 auto 20px auto;
         width: fit-content;
-        font-size: 14px; /* 縮小字體 */
-        color: #ffffff;
+        font-size: 13px;
+        color: #cccccc;
     }}
 
-    /* 3. 卡片設計：增加間距與質感 */
+    /* 卡片微縮化 */
     .info-card {{
         background-color: #1a1d23;
         border: 1px solid #30363d;
-        border-radius: 12px;
-        padding: 16px 20px;
-        margin-bottom: 20px; /* 增加卡片間距 */
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        border-radius: 10px;
+        padding: 10px 15px; /* 縮小內邊距 */
+        margin-bottom: 10px; /* 縮小間距 */
     }}
 
-    /* 4. 字體分配標籤 */
     .label-round {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
         color: #81c784;
-        font-size: 16px;
-        margin-bottom: 8px;
-        font-weight: 700;
+        font-size: 15px;
+        margin-bottom: 2px;
     }}
 
     .content-hand {{
         font-family: 'MyHand', sans-serif !important;
-        font-size: 26px;
+        font-size: 24px;
         color: #ffffff;
-        margin-top: 4px;
     }}
 
-    /* 5. 更新紀錄專用：純圓體 */
+    /* 更新紀錄：靠左、圓體 */
     .update-log-box {{
         font-family: 'Zen Maru Gothic', sans-serif !important;
-        font-size: 15px;
+        font-size: 14px;
         color: #cbd5e0;
-        line-height: 1.8;
+        line-height: 1.6;
+        text-align: left !important;
     }}
-
-    .stSelectbox {{ margin-bottom: 25px; }}
+    
+    .status-text-left {{
+        font-family: 'Zen Maru Gothic', sans-serif !important;
+        text-align: left;
+        color: #718096;
+        font-size: 13px;
+        margin-top: 5px;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
 # --- B. 標題與圖例 ---
-st.markdown('<div class="header-title">高雄輕軌 即時位置監測</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-title">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-container">🟢順行 | 🔵逆行 | 🔴目前位置</div>', unsafe_allow_html=True)
 
-# --- C. 資料處理 ---
+# --- C. 抓取位置與資料 ---
+user_loc = get_geolocation()
+user_pos = [user_loc['coords']['latitude'], user_loc['coords']['longitude']] if user_loc else None
+
 def get_tdx():
     try:
         cid, csk = st.secrets["TD_ID_NEW"], st.secrets["TD_SECRET_NEW"]
@@ -119,24 +118,28 @@ def get_tdx():
 col_map, col_info = st.columns([7, 3.5])
 
 with col_map:
-    # 增加地圖與上方間距的平衡感
-    m = folium.Map(location=[22.6593, 120.2868], zoom_start=14, tiles="cartodb voyager")
+    # 預設美術館中心，如果有使用者位置則以此為中心
+    center = user_pos if user_pos else [22.6593, 120.2868]
+    m = folium.Map(location=center, zoom_start=15, tiles="cartodb voyager")
+    
+    # 標記使用者紅點
+    if user_pos:
+        folium.CircleMarker(user_pos, radius=6, color='white', weight=2, fill=True, fill_color='red', fill_opacity=1, popup="目前位置").add_to(m)
+    
     live_data, token = get_tdx()
     for t in live_data:
         try:
             folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], 
                           icon=folium.Icon(color='green' if t.get('Direction')==0 else 'blue', icon='train', prefix='fa')).add_to(m)
         except: continue
-    folium_static(m, height=550, width=800)
+    folium_static(m, height=500, width=800)
 
 with col_info:
-    # 選擇車站區塊
     st.markdown('<div class="label-round">🚉 選擇車站</div>', unsafe_allow_html=True)
-    stations = ["C1 籬仔內", "C20 台鐵美術館", "C21 美術館", "C24 愛河之心"]
-    sel_st = st.selectbox("", stations, index=2, label_visibility="collapsed")
+    stations = {"C21 美術館": [22.6593, 120.2868], "C24 愛河之心": [22.6586, 120.3032], "C1 籬仔內": [22.6015, 120.3204]}
+    sel_st = st.selectbox("", list(stations.keys()), index=0, label_visibility="collapsed")
     tid = sel_st.split()[0]
     
-    # 預計抵達時間 (卡片排版優化)
     if token:
         try:
             b_res = requests.get(f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON", 
@@ -145,27 +148,25 @@ with col_info:
                 for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999))[:2]:
                     est = int(item.get('EstimateTime', 0))
                     msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
-                    st.markdown(f"""
-                        <div class="info-card">
-                            <div class="label-round">預計抵達時間</div>
-                            <div class="content-hand">{msg}</div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f'<div class="info-card"><div class="label-round">預計抵達時間</div><div class="content-hand">{msg}</div></div>', unsafe_allow_html=True)
         except: pass
 
     now_t = datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime("%Y/%m/%d %H:%M:%S")
-    st.markdown(f'<div style="color:#718096; font-size:13px; font-family: sans-serif; text-align:right;">📍 更新時間：{now_t}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="status-text-left">📍 更新時間：{now_t}</div>', unsafe_allow_html=True)
+    if user_pos:
+        st.markdown(f'<div class="status-text-left">✅ 已成功讀取座標</div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="status-text-left">⚠️ 正在嘗試讀取座標...</div>', unsafe_allow_html=True)
 
-st.markdown("---") # 分隔線
-
-# --- D. 底部區塊：作者留言與更新紀錄 ---
-col_msg, col_log = st.columns([1, 1])
+# --- D. 底部說明 ---
+st.markdown('<div style="height:20px;"></div>', unsafe_allow_html=True)
+col_msg, col_log = st.columns([1, 1.2])
 
 with col_msg:
     st.markdown(f"""
     <div class="info-card">
         <div class="label-round">✍️ 作者留言：</div>
-        <div class="content-hand" style="font-size: 20px;">
+        <div class="content-hand" style="font-size: 19px;">
         各位親朋好友們，不準的話可以私訊 IG 跟我講，資料由 TDX 平台提供，僅供參考。
         </div>
     </div>
@@ -176,10 +177,11 @@ with col_log:
     <div class="info-card">
         <div class="label-round">📦 最新更新內容說明：</div>
         <div class="update-log-box">
-            • 視覺比例優化：縮小圖例說明，並將標題下移，增加頁面呼吸感。<br>
-            • 字體分離邏輯：更新內容說明改回使用「圓體」，僅重點內容保留手寫體。<br>
-            • 卡片間距修正：解決卡片過於擁擠問題，提升手機版閱讀體驗。<br>
-            • 穩定更新：確保每 30 秒資料與位置同步。
+            • 標題放大且換行處理，修正頂部視覺比例。<br>
+            • 恢復紅點標記：加入自動抓取當前位置座標功能。<br>
+            • 精簡化卡片：縮小預計抵達時間卡片尺寸與文字。<br>
+            • 底部資訊靠左：更新時間與座標讀取狀態全面置左。<br>
+            • 字體修正：說明內容改回圓體，保持閱讀舒適度。
         </div>
     </div>
     """, unsafe_allow_html=True)
