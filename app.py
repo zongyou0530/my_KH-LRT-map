@@ -40,7 +40,8 @@ STATION_COORDS = {
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371
     dlat, dlon = math.radians(lat2-lat1), math.radians(lon2-lon1)
-    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    # 此處已修復語法錯誤
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 st.markdown(f"""
@@ -49,7 +50,7 @@ st.markdown(f"""
     {font_css}
     .stApp {{ background-color: #0e1117 !important; color: white !important; }}
     
-    /* 標題嚴格格式：兩行等大，不刪減字 */
+    /* 標題嚴格格式：兩行等大，手寫體 */
     .custom-header {{ font-family: 'HandWrite' !important; font-size: 38px; color: #a5d6a7; text-align: center; margin: 10px 0; line-height: 1.4; }}
 
     .legend-box {{ font-family: 'Zen Maru Gothic' !important; background-color: #1a1d23; border-radius: 8px; padding: 8px; margin-bottom: 12px; display: flex; justify-content: center; gap: 10px; border: 1px solid #30363d; font-size: 0.8em; }}
@@ -62,24 +63,22 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- C. 定位與自動對焦最近車站 ---
+# --- C. 定位與對焦邏輯 ---
 user_pos = None
 default_map_center = [22.6280, 120.3014]
 loc = get_geolocation()
 
 if loc:
     user_pos = [loc['coords']['latitude'], loc['coords']['longitude']]
-    # 計算最近車站索引
     dists = []
     for i, (name, coord) in enumerate(STATION_COORDS.items()):
         dists.append((i, haversine(user_pos[0], user_pos[1], coord[0], coord[1])))
     nearest_idx = min(dists, key=lambda x: x[1])[0]
     
-    # 存入 session_state
     if 'nearest_st_idx' not in st.session_state:
         st.session_state.nearest_st_idx = nearest_idx
     
-    # 地圖中心點設為最近車站的座標，確保「放大」在正確位置
+    # 確保地圖中心點對準最近的車站
     nearest_station_name = list(STATION_COORDS.keys())[st.session_state.nearest_st_idx]
     default_map_center = STATION_COORDS[nearest_station_name]
 
@@ -99,14 +98,13 @@ def get_tdx():
 live_pos, token = get_tdx()
 
 # --- E. UI 渲染 ---
-# 1. 標題：還原您的格式
 st.markdown('<div class="custom-header">高雄輕軌<br>即時位置監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-box">🟢順行 | 🔵逆行 | 🔴目前位置</div>', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3])
 
 with col_map:
-    # 地圖會對焦在「預設中心點」(如果有定位，就是最近車站)
+    # 設置 zoom_start 為 15 以獲得更清晰的視點
     m = folium.Map(location=default_map_center, zoom_start=15, tiles="cartodb voyager")
     if user_pos:
         folium.Circle(location=user_pos, radius=25, color='white', weight=2, fill=True, fill_color='red', fill_opacity=1, z_index_offset=1000).add_to(m)
@@ -122,7 +120,6 @@ with col_map:
 
 with col_info:
     st.markdown('<div class="card-label">🚉 選擇車站</div>', unsafe_allow_html=True)
-    # 這裡會自動選取最近的車站
     sel_st = st.selectbox("車站", list(STATION_COORDS.keys()), 
                           index=st.session_state.get('nearest_st_idx', 0), 
                           key="st_select", label_visibility="collapsed")
@@ -146,7 +143,6 @@ with col_info:
     coords_txt = f"[{user_pos[0]:.6f}, {user_pos[1]:.6f}]" if user_pos else "座標讀取中..."
     st.markdown(f'<div class="status-text">📍 更新時間：{now_t}<br>🛰️ 目前座標：{coords_txt}</div>', unsafe_allow_html=True)
 
-# --- F. 橫線與底部留言 ---
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
 st.markdown(f"""
 <div class="info-card">
@@ -155,6 +151,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 找回自動更新邏輯：每 30 秒強制重整一次
+# 自動更新：30秒重整
 time.sleep(30)
 st.rerun()
