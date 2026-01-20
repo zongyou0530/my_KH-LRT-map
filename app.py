@@ -31,15 +31,18 @@ st.markdown(f"""
     header {{ visibility: hidden; }}
     .block-container {{ padding-top: 5rem !important; }}
     
-    /* 標題與雙作者樣式 */
     .header-title {{ font-family: 'MyHand', sans-serif !important; font-size: 48px !important; color: #a5d6a7; text-align: center; line-height: 1.0; margin-bottom: 0px; }}
     .sub-author {{ font-family: 'MyHand', sans-serif !important; font-size: 22px !important; color: #81c784; text-align: center; margin-bottom: 15px; opacity: 0.9; }}
     
     .legend-container {{ font-family: 'Zen Maru Gothic', sans-serif !important; background-color: #1a1d23; border: 1px solid #30363d; border-radius: 15px; padding: 4px 12px; text-align: center; margin: 0 auto 15px auto; width: fit-content; font-size: 13px; color: #cccccc; }}
-    .info-card {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 10px; padding: 15px; margin-bottom: 10px; }}
+    .info-card {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 10px; padding: 20px 15px; margin-bottom: 10px; text-align: center; }}
     .dir-label {{ font-family: 'Zen Maru Gothic', sans-serif !important; color: #ffd54f; font-size: 18px; font-weight: bold; margin: 15px 0 10px 0; border-left: 4px solid #ffd54f; padding-left: 8px; }}
     .label-round {{ font-family: 'Zen Maru Gothic', sans-serif !important; color: #81c784; font-size: 14px; margin-bottom: 5px; }}
-    .content-hand {{ font-family: 'MyHand', sans-serif !important; font-size: 32px; }}
+    
+    /* 時間顏色控制 */
+    .time-red {{ font-family: 'MyHand', sans-serif !important; font-size: 36px; color: #ff5252 !important; }}
+    .time-yellow {{ font-family: 'MyHand', sans-serif !important; font-size: 36px; color: #ffd54f !important; }}
+    
     .status-text {{ font-family: 'Zen Maru Gothic', sans-serif !important; color: #718096; font-size: 12px; margin-top: 4px; line-height: 1.5; }}
 </style>
 """, unsafe_allow_html=True)
@@ -74,7 +77,7 @@ user_loc = get_geolocation()
 u_pos = [user_loc['coords']['latitude'], user_loc['coords']['longitude']] if user_loc else None
 token = get_token()
 
-# 標題區 (補回 ZONGYOU X gemini)
+# 標題區
 st.markdown('<div class="header-title">高雄輕軌即時監測</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-author">ZONGYOU X gemini</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-container">🚄 即時車輛 | 🔴 目前位置</div>', unsafe_allow_html=True)
@@ -107,23 +110,27 @@ with col_info:
     sel_st = st.selectbox("", st_names, index=best_idx, label_visibility="collapsed")
     tid = sel_st.split()[0]
     
-    st.markdown('<div class="dir-label">📋 即將進站時刻</div>', unsafe_allow_html=True)
+    st.markdown('<div class="dir-label">📅 即將進站時刻</div>', unsafe_allow_html=True)
     if token:
         try:
             b_res = requests.get(f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON", 
                                 headers={'Authorization': f'Bearer {token}'}).json()
             if b_res and len(b_res) > 0:
-                for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999))[:3]:
+                for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999))[:2]:
                     est = int(item.get('EstimateTime', 0))
-                    dest = item.get('DestinationStationName', {}).get('Zh_tw', '終點站')
-                    dir_txt = "順行" if item.get('Direction') == 0 else "逆行"
-                    msg = "即時進站" if est <= 1 else f"約 {est} 分鐘"
+                    # 判斷顏色與文字
+                    if est <= 1:
+                        time_class = "time-red"
+                        msg = "即時進站"
+                    else:
+                        time_class = "time-yellow"
+                        msg = f"約 {est} 分鐘"
+                    
                     st.markdown(f'''<div class="info-card">
-                                <div class="content-hand" style="color:{"#ff5252" if est <= 2 else "#ffffff"} !important;">{msg}</div>
-                                <div style="font-size:14px; color:#ffd54f;">往 {dest} ({dir_txt})</div>
+                                <div class="{time_class}">{msg}</div>
                                 </div>''', unsafe_allow_html=True)
             else:
-                st.markdown('<div class="info-card"><div class="content-hand" style="font-size:18px; color:#718096;">目前無班次資訊</div></div>', unsafe_allow_html=True)
+                st.markdown('<div class="info-card"><div style="font-family:MyHand; font-size:24px; color:#718096;">目前無班次資訊</div></div>', unsafe_allow_html=True)
         except: pass
 
     now = datetime.datetime.now(pytz.timezone('Asia/Taipei'))
@@ -137,18 +144,18 @@ col_msg, col_log = st.columns([1, 1.2])
 
 with col_msg:
     original_msg = "資料由 TDX 提供，順逆行邏輯已修正！" 
-    st.markdown(f'''<div class="info-card">
+    st.markdown(f'''<div class="info-card" style="text-align:left;">
                 <div class="label-round">✍️ 作者留言</div>
-                <div class="content-hand" style="font-size: 20px;">{original_msg}</div>
+                <div style="font-family:MyHand; font-size: 20px;">{original_msg}</div>
                 </div>''', unsafe_allow_html=True)
 
 with col_log:
-    st.markdown(f"""<div class="info-card">
+    st.markdown(f"""<div class="info-card" style="text-align:left;">
                 <div class="label-round">📦 系統更新紀錄</div>
                 <div class="status-text" style="color:#cbd5e0;">
-                • <b>雙向清單：</b>不分方向彙整顯示，解決 API 分流遺漏問題。<br>
-                • <b>智慧定位：</b>實時計算 GPS 距離並跳轉最近站點。<br>
-                • <b>完整標記：</b>包含西元時戳、雙作者標題與座標顯示。</div>
+                • <b>極簡看板：</b>移除冗餘標籤，僅顯示最核心的時間資訊。<br>
+                • <b>顯色系統：</b>即時進站改為紅色，其餘班次顯示亮黃色。<br>
+                • <b>精準更新：</b>包含西元年月日時分秒與實時 GPS。</div>
                 </div>""", unsafe_allow_html=True)
 
 time.sleep(30)
