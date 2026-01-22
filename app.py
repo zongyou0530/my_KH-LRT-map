@@ -29,47 +29,40 @@ st.markdown(f"""
     }}
     .stApp {{ background-color: #0e1117; color: white; }}
     header {{ visibility: hidden; }}
-    .block-container {{ padding-top: 2rem !important; }}
     
-    /* 標題與灰色作者 */
-    .header-title {{ font-family: 'MyHand', sans-serif !important; font-size: 38px !important; color: #a5d6a7; text-align: center; line-height: 1.2; margin-bottom: 5px; }}
-    .sub-author {{ font-family: 'MyHand', sans-serif !important; font-size: 20px !important; color: #888888; text-align: center; margin-bottom: 15px; }}
+    /* 標題與作者 */
+    .header-title {{ font-family: 'MyHand', sans-serif !important; font-size: 42px !important; color: #a5d6a7; text-align: center; line-height: 1.1; }}
+    .sub-author {{ font-family: 'MyHand', sans-serif !important; font-size: 22px !important; color: #888888; text-align: center; margin-bottom: 20px; }}
     
-    .legend-container {{ font-family: 'Zen Maru Gothic', sans-serif !important; background-color: #1a1d23; border: 1px solid #30363d; border-radius: 15px; padding: 4px 12px; text-align: center; margin: 0 auto 15px auto; width: fit-content; font-size: 13px; color: #cccccc; }}
+    .legend-container {{ font-family: 'Zen Maru Gothic', sans-serif !important; background-color: #1a1d23; border: 1px solid #30363d; border-radius: 20px; padding: 5px 15px; text-align: center; margin: 0 auto 15px auto; width: fit-content; font-size: 14px; }}
     
-    /* 精簡化看板區域 */
-    .board-container {{
-        background-color: #1a1d23;
-        border: 1px solid #30363d;
-        border-radius: 12px;
-        margin-bottom: 12px;
-        overflow: hidden;
+    /* 紅點波紋強化動畫 */
+    @keyframes pulse {{
+        0% {{ transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); }}
+        70% {{ transform: scale(1); box-shadow: 0 0 0 15px rgba(255, 82, 82, 0); }}
+        100% {{ transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); }}
     }}
-    .board-header {{
-        background-color: #252930;
-        color: #ffd54f;
-        font-family: 'Zen Maru Gothic', sans-serif;
-        font-size: 14px;
-        font-weight: bold;
-        padding: 6px 12px;
+    .current-pos {{
+        background: #ff5252;
+        border-radius: 50%;
+        width: 12px; height: 12px;
+        border: 2px solid white;
+        animation: pulse 2s infinite;
     }}
-    .board-content {{
-        padding: 12px 10px; /* 縮減間距 */
-        text-align: center;
-        border-bottom: 1px solid #30363d;
-    }}
-    .board-content:last-child {{ border-bottom: none; }}
+
+    /* 看板區域微調 */
+    .board-container {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }}
+    .board-header {{ background-color: #252930; color: #ffd54f; font-size: 14px; font-weight: bold; padding: 6px 12px; }}
+    .board-content {{ padding: 10px; text-align: center; border-bottom: 1px solid #30363d; }}
+    .time-red {{ font-family: 'MyHand', sans-serif !important; font-size: 32px; color: #ff5252 !important; }}
+    .time-yellow {{ font-family: 'MyHand', sans-serif !important; font-size: 32px; color: #ffd54f !important; }}
     
-    /* 時間顏色控制 - 稍微縮小字體以免太笨重 */
-    .time-red {{ font-family: 'MyHand', sans-serif !important; font-size: 30px; color: #ff5252 !important; }}
-    .time-yellow {{ font-family: 'MyHand', sans-serif !important; font-size: 30px; color: #ffd54f !important; }}
-    
-    .label-round {{ font-family: 'Zen Maru Gothic', sans-serif !important; color: #81c784; font-size: 13px; margin-bottom: 4px; }}
-    .status-text {{ font-family: 'Zen Maru Gothic', sans-serif !important; color: #718096; font-size: 11px; margin-top: 2px; }}
+    .status-text {{ font-family: 'Zen Maru Gothic', sans-serif !important; color: #718096; font-size: 12px; }}
+    .label-round {{ color: #81c784; font-size: 14px; margin-bottom: 5px; }}
 </style>
 """, unsafe_allow_html=True)
 
-# --- B. 核心車站資料庫 (保持不變) ---
+# --- B. 車站資料庫 ---
 LRT_STATIONS = {
     "C1 籬仔內": [22.6015, 120.3204], "C2 凱旋瑞田": [22.5969, 120.3201], "C3 前鎮之星": [22.5935, 120.3159],
     "C4 凱旋中華": [22.5947, 120.3094], "C5 夢時代": [22.5950, 120.3040], "C6 經貿園區": [22.5985, 120.3023],
@@ -99,26 +92,33 @@ user_loc = get_geolocation()
 u_pos = [user_loc['coords']['latitude'], user_loc['coords']['longitude']] if user_loc else None
 token = get_token()
 
-# 標題換行與灰色作者
-st.markdown('<div class="header-title">高雄輕軌即時位置<br>地圖</div>', unsafe_allow_html=True)
+# 1. 標題與作者 (強制換行)
+st.markdown('<div class="header-title">高雄輕軌<br>即時位置地圖</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-author">Zongyou X Gemini</div>', unsafe_allow_html=True)
-# 修正圖標說明
-st.markdown('<div class="legend-container">🚆 即時車輛 | 🔴 目前位置</div>', unsafe_allow_html=True)
+st.markdown('<div class="legend-container">🟢 順行 | 🔵 逆行 | 🔴 目前位置</div>', unsafe_allow_html=True)
 
 col_map, col_info = st.columns([7, 3.5])
 
 with col_map:
     m = folium.Map(location=u_pos if u_pos else [22.6593, 120.2868], zoom_start=15)
+    # 強化版紅點波紋
     if u_pos:
-        folium.CircleMarker(u_pos, radius=7, color='white', weight=2, fill=True, fill_color='red', fill_opacity=1).add_to(m)
+        folium.Marker(
+            u_pos,
+            icon=folium.DivIcon(html=f'<div class="current-pos"></div>')
+        ).add_to(m)
+        
     if token:
         try:
             pos = requests.get('https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON', 
                              headers={'Authorization': f'Bearer {token}'}).json()
             trains = pos if isinstance(pos, list) else pos.get('LivePositions', [])
             for t in trains:
+                # 恢復雙色邏輯: 0 順行(綠), 1 逆行(藍)
+                dir_val = t.get('Direction', 0)
+                train_color = 'green' if dir_val == 0 else 'blue'
                 folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], 
-                              icon=folium.Icon(color='green', icon='train', prefix='fa')).add_to(m)
+                              icon=folium.Icon(color=train_color, icon='train', prefix='fa')).add_to(m)
         except: pass
     folium_static(m, height=480, width=800)
 
@@ -133,7 +133,6 @@ with col_info:
     sel_st = st.selectbox("", st_names, index=best_idx, label_visibility="collapsed")
     tid = sel_st.split()[0]
     
-    # 精簡後的進站時刻看板
     board_html = '<div class="board-container"><div class="board-header">📅 即將進站時刻</div>'
     if token:
         try:
@@ -146,33 +145,31 @@ with col_info:
                     board_html += f'<div class="board-content"><div class="{t_class}">{msg}</div></div>'
             else:
                 board_html += '<div class="board-content"><div style="font-family:MyHand; font-size:20px; color:#718096;">目前無班次資訊</div></div>'
-        except:
-            board_html += '<div class="board-content"><div style="font-family:MyHand; font-size:20px; color:#718096;">連線檢查中...</div></div>'
+        except: pass
     board_html += '</div>'
     st.markdown(board_html, unsafe_allow_html=True)
 
     now = datetime.datetime.now(pytz.timezone('Asia/Taipei'))
     st.markdown(f'<div class="status-text">🕒 最後更新：{now.strftime("%Y/%m/%d %H:%M:%S")}</div>', unsafe_allow_html=True)
-    if u_pos:
-        st.markdown(f'<div class="status-text">🛰️ 目前座標：{u_pos[0]:.4f}, {u_pos[1]:.4f}</div>', unsafe_allow_html=True)
 
-# --- D. 作者留言與日誌 ---
-st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
+# --- D. 版本號與日誌 ---
+st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
 col_msg, col_log = st.columns([1, 1])
 
 with col_msg:
-    st.markdown(f'''<div class="board-container" style="padding:10px;">
+    st.markdown(f'''<div class="board-container" style="padding:15px;">
                 <div class="label-round">✍️ 作者留言</div>
-                <div style="font-family:MyHand; font-size: 18px;">資料由 TDX 提供，請勿長時間開啟，點數會不夠。</div>
+                <div style="font-family:MyHand; font-size: 18px;">資料由 TDX 提供，拜託大家不要一直開著，我點數會不夠。</div>
                 </div>''', unsafe_allow_html=True)
 
 with col_log:
-    st.markdown(f"""<div class="board-container" style="padding:10px;">
-                <div class="label-round">📦 系統更新紀錄</div>
-                <div class="status-text" style="color:#cbd5e0; font-size:10px;">
-                • 介面精進化：壓縮卡片尺寸，提升單屏資訊量。<br>
-                • 視覺校正：修正標題換行與作者顏色。<br>
-                • 指南修正：圖標說明回歸單一🚆標示。</div>
+    st.markdown(f"""<div class="board-container" style="padding:15px;">
+                <div class="label-round">📦 系統更新紀錄 (v1.2.1)</div>
+                <div class="status-text" style="color:#cbd5e0;">
+                • 標題校正：修正標題換行邏輯。<br>
+                • 圖標回歸：恢復雙向(🟢/🔵)車輛顯示。<br>
+                • 定位強化：顯著增強目前位置(🔴)波紋效果。<br>
+                • 卡片優化：調整進站時間卡片比例。</div>
                 </div>""", unsafe_allow_html=True)
 
 time.sleep(30)
