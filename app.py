@@ -10,7 +10,7 @@ import pytz
 import math
 from streamlit_js_eval import get_geolocation
 
-# 1. 頁面基本配置
+# 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測系統", layout="wide", initial_sidebar_state="collapsed")
 
 # --- A. 字體與視覺樣式 ---
@@ -40,29 +40,28 @@ style_html = """
     .stApp { background-color: #0e1117; color: white; }
     header { visibility: hidden; }
     
-    .header-title { font-size: 42px; color: #a5d6a7; text-align: center; line-height: 1.1; margin-top: 10px; }
-    .sub-author { font-size: 20px; color: #888888; text-align: center; margin-bottom: 10px; }
-    .legend-bar { background-color: #1a1d23; border: 1px solid #30363d; border-radius: 20px; padding: 5px 15px; text-align: center; margin: 0 auto 15px auto; width: fit-content; font-size: 14px; }
+    .header-title { font-size: 38px; color: #a5d6a7; text-align: center; line-height: 1.1; margin-top: 5px; }
+    .sub-author { font-size: 18px; color: #888888; text-align: center; margin-bottom: 5px; }
+    .legend-bar { background-color: #1a1d23; border: 1px solid #30363d; border-radius: 20px; padding: 4px 12px; text-align: center; margin: 0 auto 10px auto; width: fit-content; font-size: 13px; }
     
-    /* 時刻表卡片化 */
+    /* 精緻微縮卡片 */
     .arrival-card {
-        background: #1e2229;
-        border: 1px solid #3e4451;
-        border-radius: 15px;
-        padding: 20px;
-        margin: 10px 0;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        background: rgba(45, 51, 59, 0.7);
+        border: 1px solid #444c56;
+        border-radius: 10px;
+        padding: 8px 12px;
+        margin: 6px 0;
         text-align: center;
+        transition: transform 0.2s;
     }
     
-    .time-val { font-size: 36px; font-weight: bold; margin: 5px 0; }
-    .time-red { color: #ff5252; }
+    .time-val { font-size: 26px; font-weight: bold; margin: 0; }
+    .time-red { color: #ff6b6b; }
     .time-yellow { color: #ffd54f; }
-    .status-info { color: #718096; font-size: 13px; margin-top: 5px; }
+    .status-info { color: #8b949e; font-size: 12px; margin-top: 3px; }
 
-    /* 通用容器 */
-    .info-container { background-color: #1a1d23; border: 1px solid #30363d; border-radius: 12px; padding: 15px; margin-bottom: 10px; }
-    .info-header { color: #ffd54f; font-size: 15px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #30363d; padding-bottom: 5px; }
+    .info-container { background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+    .info-header { color: #ffd54f; font-size: 14px; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #30363d; padding-bottom: 4px; }
 </style>
 """
 st.markdown(style_html, unsafe_allow_html=True)
@@ -97,7 +96,7 @@ user_loc = get_geolocation()
 u_pos = [user_loc['coords']['latitude'], user_loc['coords']['longitude']] if user_loc and user_loc.get('coords') else [22.6508, 120.2825]
 token = get_token()
 
-# 頁面標題與圖標說明
+# 標題與說明
 st.markdown('<div class="header-title hand-font">高雄輕軌<br>即時位置地圖</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-author hand-font">Zongyou X Gemini</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-bar">🟢 順行 | 🔵 逆行 | 🔴 目前位置</div>', unsafe_allow_html=True)
@@ -107,7 +106,7 @@ col_map, col_info = st.columns([7, 3.5])
 with col_map:
     m = folium.Map(location=u_pos, zoom_start=15)
     folium.CircleMarker(
-        location=u_pos, radius=10, color='#ffffff', fill=True, fill_color='#ff5252', fill_opacity=0.9, popup='目前位置'
+        location=u_pos, radius=8, color='#ffffff', fill=True, fill_color='#ff5252', fill_opacity=0.9, popup='目前位置'
     ).add_to(m)
     
     if token:
@@ -121,17 +120,17 @@ with col_map:
                     icon=folium.Icon(color='green' if dir_val==0 else 'blue', icon='train', prefix='fa')
                 ).add_to(m)
         except: pass
-    folium_static(m, height=480, width=800)
+    folium_static(m, height=450, width=800)
 
 with col_info:
     st_names = list(LRT_STATIONS.keys())
     best_st = min(st_names, key=lambda n: math.sqrt((u_pos[0]-LRT_STATIONS[n][0])**2 + (u_pos[1]-LRT_STATIONS[n][1])**2))
     
-    st.markdown('<div style="color:#81c784; font-size:14px; margin-bottom:5px;">🚉 車站選擇</div>', unsafe_allow_html=True)
+    st.markdown('<div style="color:#81c784; font-size:13px; margin-bottom:4px;">🚉 車站選擇</div>', unsafe_allow_html=True)
     sel_st = st.selectbox("", st_names, index=st_names.index(best_st), label_visibility="collapsed")
     tid = sel_st.split()[0]
     
-    st.markdown('<div style="color:#ffd54f; font-size:15px; font-weight:bold; margin: 10px 0 5px 0;">📅 即將進站時刻</div>', unsafe_allow_html=True)
+    st.markdown('<div style="color:#ffd54f; font-size:14px; font-weight:bold; margin-top: 5px;">📅 即將進站時刻</div>', unsafe_allow_html=True)
     if token:
         try:
             b_res = requests.get(f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON", headers={'Authorization': f'Bearer {token}'}).json()
@@ -141,21 +140,20 @@ with col_info:
                     t_class, msg = ("time-red", "即時進站") if est <= 1 else ("time-yellow", f"約 {est} 分鐘")
                     st.markdown(f'<div class="arrival-card"><div class="hand-font time-val {t_class}">{msg}</div></div>', unsafe_allow_html=True)
             else:
-                st.markdown('<div class="arrival-card">目前無班次</div>', unsafe_allow_html=True)
+                st.markdown('<div class="arrival-card" style="font-size:14px; color:#8b949e;">目前無班次</div>', unsafe_allow_html=True)
         except: pass
 
-    # 顯示座標與更新時間
     now = datetime.datetime.now(pytz.timezone('Asia/Taipei'))
     st.markdown(f'<div class="status-info">🕒 最後更新：{now.strftime("%H:%M:%S")}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="status-info">🛰️ 目前座標：{u_pos[0]:.4f}, {u_pos[1]:.4f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="status-info">🛰️ 讀取座標：{u_pos[0]:.4f}, {u_pos[1]:.4f}</div>', unsafe_allow_html=True)
 
 # --- D. 作者留言區 ---
-st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
+st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
 c_msg, c_log = st.columns(2)
 with c_msg:
-    st.markdown('<div class="info-container"><div class="info-header">✍️ 作者留言</div><div class="hand-font" style="font-size:18px;">資料由 TDX 提供，拜託大家不要一直開著，我點數會不夠。</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-container"><div class="info-header">✍️ 作者留言</div><div class="hand-font" style="font-size:17px;">資料由 TDX 提供，拜託大家不要一直開著，我點數會不夠。</div></div>', unsafe_allow_html=True)
 with c_log:
-    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.3.2)</div><div style="font-size:12px; color:#cbd5e0;">• 卡片美化：重新設計時刻表為懸浮卡片風格。<br>• 功能找回：恢復圖標說明與實時座標顯示。<br>• 字體校正：確保 Zen Maru Gothic 全域套用。</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.3.3)</div><div style="font-size:12px; color:#8b949e;">• 介面優化：時刻表卡片小巧化，移除俗氣感。<br>• 穩定測試：確保座標讀取與圓體字樣式並存。</div></div>', unsafe_allow_html=True)
 
 time.sleep(30)
 st.rerun()
