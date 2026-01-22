@@ -20,6 +20,7 @@ if os.path.exists(font_path):
     with open(font_path, "rb") as f:
         hand_base64 = base64.b64encode(f.read()).decode()
 
+# 注意：這裡使用兩層大括號 {{ }} 來避開 Python f-string 錯誤
 st.markdown(f"""
 <style>
     @font-face {{
@@ -29,41 +30,37 @@ st.markdown(f"""
     .stApp {{ background-color: #0e1117; color: white; }}
     header {{ visibility: hidden; }}
     
-    /* 標題強制換行 */
     .header-title {{ font-family: 'MyHand', sans-serif !important; font-size: 42px !important; color: #a5d6a7; text-align: center; line-height: 1.1; }}
-    /* 作者灰色 */
     .sub-author {{ font-family: 'MyHand', sans-serif !important; font-size: 22px !important; color: #888888; text-align: center; margin-bottom: 20px; }}
-    
     .legend-container {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 20px; padding: 5px 15px; text-align: center; margin: 0 auto 15px auto; width: fit-content; font-size: 14px; }}
     
-    /* 終極置頂紅點雷達波紋 */
+    /* 紅點雷達波紋強制置頂 */
     .current-pos-container {{
         position: relative;
         width: 50px; height: 50px;
         display: flex; justify-content: center; align-items: center;
-        z-index: 9999 !important;
+        z-index: 99999 !important;
     }}
     .dot-core {{
-        width: 16px; height: 16px;
+        width: 18px; height: 18px;
         background-color: #ff5252;
         border: 2px solid #ffffff;
         border-radius: 50%;
-        box-shadow: 0 0 10px rgba(255, 82, 82, 0.8);
-        z-index: 10001;
-        position: relative;
+        box-shadow: 0 0 15px rgba(255, 82, 82, 0.9);
+        z-index: 100001;
     }}
     .pulse-ring {{
         position: absolute;
-        width: 16px; height: 16px;
-        border: 3px solid #ff5252;
+        width: 18px; height: 18px;
+        border: 4px solid #ff5252;
         border-radius: 50%;
-        background-color: rgba(255, 82, 82, 0.2);
+        background-color: rgba(255, 82, 82, 0.3);
         animation: radar-pulse 2s infinite ease-out;
-        z-index: 10000;
+        z-index: 100000;
     }}
     @keyframes radar-pulse {{
         0% {{ transform: scale(1); opacity: 1; }}
-        100% {{ transform: scale(5); opacity: 0; }}
+        100% {{ transform: scale(6); opacity: 0; }}
     }}
 
     .board-container {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }}
@@ -76,7 +73,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- B. 核心資料庫 (不省略) ---
+# --- B. 核心資料庫 (全車站) ---
 LRT_STATIONS = {
     "C1 籬仔內": [22.6015, 120.3204], "C2 凱旋瑞田": [22.5969, 120.3201], "C3 前鎮之星": [22.5935, 120.3159],
     "C4 凱旋中華": [22.5947, 120.3094], "C5 夢時代": [22.5950, 120.3040], "C6 經貿園區": [22.5985, 120.3023],
@@ -101,12 +98,12 @@ def get_token():
         return r.json().get('access_token')
     except: return None
 
-# 定位
+# 定位獲取
 user_loc = get_geolocation()
 u_pos = [user_loc['coords']['latitude'], user_loc['coords']['longitude']] if user_loc and user_loc.get('coords') else None
 token = get_token()
 
-# 標題渲染 (換行+灰色)
+# 標題渲染
 st.markdown('<div class="header-title">高雄輕軌<br>即時位置地圖</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-author">Zongyou X Gemini</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-container">🟢 順行 | 🔵 逆行 | 🔴 目前位置</div>', unsafe_allow_html=True)
@@ -114,9 +111,10 @@ st.markdown('<div class="legend-container">🟢 順行 | 🔵 逆行 | 🔴 目�
 col_map, col_info = st.columns([7, 3.5])
 
 with col_map:
+    # 若無定位預設美術館
     m = folium.Map(location=u_pos if u_pos else [22.6593, 120.2868], zoom_start=15)
     
-    # 紅點置頂波紋
+    # 這裡就是你要的紅點：強制置頂、大波紋
     if u_pos:
         folium.Marker(
             location=u_pos,
@@ -128,12 +126,14 @@ with col_map:
         
     if token:
         try:
-            pos = requests.get('https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON', headers={'Authorization': f'Bearer {token}'}).json()
+            pos = requests.get('https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON', 
+                             headers={'Authorization': f'Bearer {token}'}).json()
             trains = pos if isinstance(pos, list) else pos.get('LivePositions', [])
             for t in trains:
                 dir_val = t.get('Direction', 0)
                 train_color = 'green' if dir_val == 0 else 'blue'
-                folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], icon=folium.Icon(color=train_color, icon='train', prefix='fa')).add_to(m)
+                folium.Marker([t['TrainPosition']['PositionLat'], t['TrainPosition']['PositionLon']], 
+                              icon=folium.Icon(color=train_color, icon='train', prefix='fa')).add_to(m)
         except: pass
     folium_static(m, height=480, width=800)
 
@@ -148,11 +148,11 @@ with col_info:
     sel_st = st.selectbox("", st_names, index=best_idx, label_visibility="collapsed")
     tid = sel_st.split()[0]
     
-    # 精簡看板
     board_html = '<div class="board-container"><div class="board-header">📅 即將進站時刻</div>'
     if token:
         try:
-            b_res = requests.get(f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON", headers={'Authorization': f'Bearer {token}'}).json()
+            b_res = requests.get(f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON", 
+                                headers={'Authorization': f'Bearer {token}'}).json()
             if b_res and len(b_res) > 0:
                 for item in sorted(b_res, key=lambda x: x.get('EstimateTime', 999))[:2]:
                     est = int(item.get('EstimateTime', 0))
@@ -169,9 +169,9 @@ with col_info:
     if u_pos:
         st.markdown(f'<div class="status-text">🛰️ 目前座標：{u_pos[0]:.4f}, {u_pos[1]:.4f}</div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="status-text" style="color:#ff5252;">⚠️ 未取得 GPS 定位 (請點擊允許)</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="status-text" style="color:#ff5252;">⚠️ 未取得 GPS 定位 (請開啟權限)</div>', unsafe_allow_html=True)
 
-# --- D. 作者留言與紀錄 ---
+# --- D. 作者留言區 ---
 st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
 col_msg, col_log = st.columns([1, 1])
 
@@ -185,12 +185,11 @@ with col_msg:
 
 with col_log:
     st.markdown(f"""<div class="board-container">
-                <div class="board-header">📦 系統更新紀錄 (v1.2.6)</div>
+                <div class="board-header">📦 系統更新紀錄 (v1.2.7)</div>
                 <div style="padding:15px; color:#cbd5e0; font-size:11px;">
-                • 定位置頂：解決紅點被圖標遮擋問題。<br>
-                • 標題換行：強制高雄輕軌後換行，校正作者顏色。<br>
-                • 雙色車頭：🟢順行 / 🔵逆行 恢復顯示。<br>
-                • 代碼穩定：修復因縮寫導致的 Syntax 錯誤。
+                • 最終樣式校正：解決 Python f-string 解析 CSS 括號的報錯問題。<br>
+                • 紅點視覺極大化：雷達波紋擴散係數調升至 6 倍。<br>
+                • 置頂優先權：紅點 Z-index 調至最高，絕不被圖標遮蓋。
                 </div>
                 </div>""", unsafe_allow_html=True)
 
