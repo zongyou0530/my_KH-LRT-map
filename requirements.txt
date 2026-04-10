@@ -1,5 +1,6 @@
+
 requests
 folium
-streamlit
 streamlit-folium
+pytz
 streamlit-js-eval
