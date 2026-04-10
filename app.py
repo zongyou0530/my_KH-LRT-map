@@ -29,10 +29,12 @@ style_html = """
         src: url(data:font/otf;base64,""" + hand_base64 + """) format('opentype');
     }
     
+    /* 全域使用 Zen Maru Gothic */
     html, body, [class*="st-"], div, span, p {
         font-family: 'Zen Maru Gothic', sans-serif !important;
     }
 
+    /* 手寫體專用類別 */
     .hand-font {
         font-family: 'MyHand', sans-serif !important;
     }
@@ -44,7 +46,7 @@ style_html = """
     .sub-author { font-size: 18px; color: #888888; text-align: center; margin-bottom: 5px; }
     .legend-bar { background-color: #1a1d23; border: 1px solid #30363d; border-radius: 20px; padding: 4px 12px; text-align: center; margin: 0 auto 10px auto; width: fit-content; font-size: 13px; }
     
-    /* 精緻微縮卡片 */
+    /* 小巧精緻卡片 */
     .arrival-card {
         background: rgba(45, 51, 59, 0.7);
         border: 1px solid #444c56;
@@ -52,7 +54,6 @@ style_html = """
         padding: 8px 12px;
         margin: 6px 0;
         text-align: center;
-        transition: transform 0.2s;
     }
     
     .time-val { font-size: 26px; font-weight: bold; margin: 0; }
@@ -66,7 +67,7 @@ style_html = """
 """
 st.markdown(style_html, unsafe_allow_html=True)
 
-# --- B. 核心資料 ---
+# --- B. 核心資料庫 ---
 LRT_STATIONS = {
     "C1 籬仔內": [22.6015, 120.3204], "C2 凱旋瑞田": [22.5969, 120.3201], "C3 前鎮之星": [22.5935, 120.3159],
     "C4 凱旋中華": [22.5947, 120.3094], "C5 夢時代": [22.5950, 120.3040], "C6 經貿園區": [22.5985, 120.3023],
@@ -96,7 +97,7 @@ user_loc = get_geolocation()
 u_pos = [user_loc['coords']['latitude'], user_loc['coords']['longitude']] if user_loc and user_loc.get('coords') else [22.6508, 120.2825]
 token = get_token()
 
-# 標題與說明
+# 渲染頁面頂部
 st.markdown('<div class="header-title hand-font">高雄輕軌<br>即時位置地圖</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-author hand-font">Zongyou X Gemini</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-bar">🟢 順行 | 🔵 逆行 | 🔴 目前位置</div>', unsafe_allow_html=True)
@@ -147,13 +148,13 @@ with col_info:
     st.markdown(f'<div class="status-info">🕒 最後更新：{now.strftime("%H:%M:%S")}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="status-info">🛰️ 讀取座標：{u_pos[0]:.4f}, {u_pos[1]:.4f}</div>', unsafe_allow_html=True)
 
-# --- D. 作者留言區 ---
+# --- D. 作者留言與更新紀錄 ---
 st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
 c_msg, c_log = st.columns(2)
 with c_msg:
     st.markdown('<div class="info-container"><div class="info-header">✍️ 作者留言</div><div class="hand-font" style="font-size:17px;">資料由 TDX 提供，拜託大家不要一直開著，我點數會不夠。</div></div>', unsafe_allow_html=True)
 with c_log:
-    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.3.3)</div><div style="font-size:12px; color:#8b949e;">• 介面優化：時刻表卡片小巧化，移除俗氣感。<br>• 穩定測試：確保座標讀取與圓體字樣式並存。</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.3.3)</div><div style="font-size:12px; color:#8b949e;">• 介面優化：時刻表卡片微縮美化。<br>• 功能找回：恢復圖標說明與座標顯示。<br>• 字體校正：Zen Maru Gothic 圓體套用成功。</div></div>', unsafe_allow_html=True)
 
 time.sleep(30)
 st.rerun()
