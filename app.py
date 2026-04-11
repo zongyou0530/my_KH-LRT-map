@@ -10,8 +10,37 @@ import pytz
 import math
 from streamlit_js_eval import get_geolocation
 
-# 1. 頁面配置
+# 1. 頁面配置 (這行必須在最前面)
 st.set_page_config(page_title="高雄輕軌監測系統", layout="wide", initial_sidebar_state="collapsed")
+
+# --- 🔐 密碼保護區 ---
+def password_entered():
+    """檢查輸入的密碼是否正確"""
+    if st.session_state["pwd"] == "5533":
+        st.session_state["password_correct"] = True
+        del st.session_state["pwd"]  # 刪除暫存密碼避免洩漏
+    else:
+        st.session_state["password_correct"] = False
+
+def check_password():
+    """驗證密碼，若正確則回傳 True"""
+    if st.session_state.get("password_correct", False):
+        return True
+    
+    # 顯示密碼輸入框
+    st.markdown("<h2 style='text-align:center;'>🔒 私人情報屋</h2>", unsafe_allow_html=True)
+    st.text_input("請輸入密碼以進入系統", type="password", on_change=password_entered, key="pwd")
+    
+    if "password_correct" in st.session_state and not st.session_state["password_correct"]:
+        st.error("😕 密碼錯誤，請再試一次。")
+    
+    return False
+
+# 如果密碼沒過，就停止執行後面的程式碼
+if not check_password():
+    st.stop()
+
+# --- 🔓 通過檢查後顯示的內容 ---
 
 # --- A. 字體與視覺樣式 ---
 font_path = "ZONGYOOOOOOU1.otf"
@@ -29,12 +58,10 @@ style_html = """
         src: url(data:font/otf;base64,""" + hand_base64 + """) format('opentype');
     }
     
-    /* 全域使用 Zen Maru Gothic */
     html, body, [class*="st-"], div, span, p {
         font-family: 'Zen Maru Gothic', sans-serif !important;
     }
 
-    /* 手寫體專用類別 */
     .hand-font {
         font-family: 'MyHand', sans-serif !important;
     }
@@ -46,7 +73,6 @@ style_html = """
     .sub-author { font-size: 18px; color: #888888; text-align: center; margin-bottom: 5px; }
     .legend-bar { background-color: #1a1d23; border: 1px solid #30363d; border-radius: 20px; padding: 4px 12px; text-align: center; margin: 0 auto 10px auto; width: fit-content; font-size: 13px; }
     
-    /* 小巧精緻卡片 */
     .arrival-card {
         background: rgba(45, 51, 59, 0.7);
         border: 1px solid #444c56;
@@ -97,7 +123,7 @@ user_loc = get_geolocation()
 u_pos = [user_loc['coords']['latitude'], user_loc['coords']['longitude']] if user_loc and user_loc.get('coords') else [22.6508, 120.2825]
 token = get_token()
 
-# 渲染頁面頂部
+# 標題與說明
 st.markdown('<div class="header-title hand-font">高雄輕軌<br>即時位置地圖</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-author hand-font">Zongyou X Gemini</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-bar">🟢 順行 | 🔵 逆行 | 🔴 目前位置</div>', unsafe_allow_html=True)
@@ -148,13 +174,13 @@ with col_info:
     st.markdown(f'<div class="status-info">🕒 最後更新：{now.strftime("%H:%M:%S")}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="status-info">🛰️ 讀取座標：{u_pos[0]:.4f}, {u_pos[1]:.4f}</div>', unsafe_allow_html=True)
 
-# --- D. 作者留言與更新紀錄 ---
+# --- D. 作者留言區 ---
 st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
 c_msg, c_log = st.columns(2)
 with c_msg:
     st.markdown('<div class="info-container"><div class="info-header">✍️ 作者留言</div><div class="hand-font" style="font-size:17px;">資料由 TDX 提供，拜託大家不要一直開著，我點數會不夠。</div></div>', unsafe_allow_html=True)
 with c_log:
-    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.3.3)</div><div style="font-size:12px; color:#8b949e;">• 介面優化：時刻表卡片微縮美化。<br>• 功能找回：恢復圖標說明與座標顯示。<br>• 字體校正：Zen Maru Gothic 圓體套用成功。</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.4.0)</div><div style="font-size:12px; color:#8b949e;">• 安全升級：新增密碼鎖功能。<br>• 介面微縮：時刻表卡片與座標顯示共存。</div></div>', unsafe_allow_html=True)
 
 time.sleep(30)
 st.rerun()
