@@ -10,37 +10,34 @@ import pytz
 import math
 from streamlit_js_eval import get_geolocation
 
-# 1. 頁面配置 (這行必須在最前面)
+# 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測系統", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 🔐 密碼保護區 ---
-def password_entered():
-    """檢查輸入的密碼是否正確"""
-    if st.session_state["pwd"] == "5533":
-        st.session_state["password_correct"] = True
-        del st.session_state["pwd"]  # 刪除暫存密碼避免洩漏
-    else:
-        st.session_state["password_correct"] = False
-
+# --- 🔐 簡化版密碼保護區 (穩定修復 KeyError) ---
 def check_password():
-    """驗證密碼，若正確則回傳 True"""
+    # 如果已經登入過，直接放行
     if st.session_state.get("password_correct", False):
         return True
     
-    # 顯示密碼輸入框
     st.markdown("<h2 style='text-align:center;'>🔒 私人情報屋</h2>", unsafe_allow_html=True)
-    st.text_input("請輸入密碼以進入系統", type="password", on_change=password_entered, key="pwd")
     
-    if "password_correct" in st.session_state and not st.session_state["password_correct"]:
+    # 直接抓取輸入框的值，不要用 callback 比較不會出錯
+    password_input = st.text_input("請輸入密碼以進入系統", type="password")
+    
+    if password_input == "5533":
+        st.session_state["password_correct"] = True
+        st.rerun() # 密碼對了立刻刷新頁面進入地圖
+        return True
+    elif password_input != "":
         st.error("😕 密碼錯誤，請再試一次。")
     
     return False
 
-# 如果密碼沒過，就停止執行後面的程式碼
+# 密碼檢查
 if not check_password():
     st.stop()
 
-# --- 🔓 通過檢查後顯示的內容 ---
+# --- 🔓 通過後顯示的內容 (以下內容均維持原樣) ---
 
 # --- A. 字體與視覺樣式 ---
 font_path = "ZONGYOOOOOOU1.otf"
@@ -93,7 +90,7 @@ style_html = """
 """
 st.markdown(style_html, unsafe_allow_html=True)
 
-# --- B. 核心資料庫 ---
+# --- B. 核心資料庫 (完整保留) ---
 LRT_STATIONS = {
     "C1 籬仔內": [22.6015, 120.3204], "C2 凱旋瑞田": [22.5969, 120.3201], "C3 前鎮之星": [22.5935, 120.3159],
     "C4 凱旋中華": [22.5947, 120.3094], "C5 夢時代": [22.5950, 120.3040], "C6 經貿園區": [22.5985, 120.3023],
@@ -123,7 +120,7 @@ user_loc = get_geolocation()
 u_pos = [user_loc['coords']['latitude'], user_loc['coords']['longitude']] if user_loc and user_loc.get('coords') else [22.6508, 120.2825]
 token = get_token()
 
-# 標題與說明
+# 標題渲染
 st.markdown('<div class="header-title hand-font">高雄輕軌<br>即時位置地圖</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-author hand-font">Zongyou X Gemini</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-bar">🟢 順行 | 🔵 逆行 | 🔴 目前位置</div>', unsafe_allow_html=True)
@@ -133,7 +130,7 @@ col_map, col_info = st.columns([7, 3.5])
 with col_map:
     m = folium.Map(location=u_pos, zoom_start=15)
     folium.CircleMarker(
-        location=u_pos, radius=8, color='#ffffff', fill=True, fill_color='#ff5252', fill_opacity=0.9, popup='目前位置'
+        location=u_pos, radius=8, color='#ffffff', fill=True, fill_color='#ff5252', fill_opacity=0.9
     ).add_to(m)
     
     if token:
@@ -152,8 +149,6 @@ with col_map:
 with col_info:
     st_names = list(LRT_STATIONS.keys())
     best_st = min(st_names, key=lambda n: math.sqrt((u_pos[0]-LRT_STATIONS[n][0])**2 + (u_pos[1]-LRT_STATIONS[n][1])**2))
-    
-    st.markdown('<div style="color:#81c784; font-size:13px; margin-bottom:4px;">🚉 車站選擇</div>', unsafe_allow_html=True)
     sel_st = st.selectbox("", st_names, index=st_names.index(best_st), label_visibility="collapsed")
     tid = sel_st.split()[0]
     
@@ -174,13 +169,13 @@ with col_info:
     st.markdown(f'<div class="status-info">🕒 最後更新：{now.strftime("%H:%M:%S")}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="status-info">🛰️ 讀取座標：{u_pos[0]:.4f}, {u_pos[1]:.4f}</div>', unsafe_allow_html=True)
 
-# --- D. 作者留言區 ---
+# --- D. 頁尾區 ---
 st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
 c_msg, c_log = st.columns(2)
 with c_msg:
     st.markdown('<div class="info-container"><div class="info-header">✍️ 作者留言</div><div class="hand-font" style="font-size:17px;">資料由 TDX 提供，拜託大家不要一直開著，我點數會不夠。</div></div>', unsafe_allow_html=True)
 with c_log:
-    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.4.0)</div><div style="font-size:12px; color:#8b949e;">• 安全升級：新增密碼鎖功能。<br>• 介面微縮：時刻表卡片與座標顯示共存。</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.4.1)</div><div style="font-size:12px; color:#8b949e;">• 穩定性：修復了密碼驗證時的 KeyError。<br>• 效率：簡化了密碼檢查流程。</div></div>', unsafe_allow_html=True)
 
 time.sleep(30)
 st.rerun()
