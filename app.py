@@ -13,20 +13,33 @@ from streamlit_js_eval import get_geolocation
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測系統", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 🔐 簡化版密碼保護區 (穩定修復 KeyError) ---
+# --- 🔐 簡化版密碼保護區 (新增 DotGothic16 樣式) ---
 def check_password():
     # 如果已經登入過，直接放行
     if st.session_state.get("password_correct", False):
         return True
     
-    st.markdown("<h2 style='text-align:center;'> 🫪identity verification🔒 </h2>", unsafe_allow_html=True)
+    # 這裡加入只針對密碼頁面的 CSS 樣式
+    st.markdown("""
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+            
+            /* 強制讓密碼頁面的所有文字變成 DotGothic16 */
+            .stApp, div, span, p, input, h2 {
+                font-family: 'DotGothic16', sans-serif !important;
+            }
+            .stApp { background-color: #0e1117; }
+        </style>
+    """, unsafe_allow_html=True)
     
-    # 直接抓取輸入框的值，不要用 callback 比較不會出錯
+    st.markdown("<h2 style='text-align:center;'> 🫪 identity verification 🔒 </h2>", unsafe_allow_html=True)
+    
+    # 直接抓取輸入框的值
     password_input = st.text_input("需輸入密碼驗證 🔑", type="password")
     
     if password_input == "5533":
         st.session_state["password_correct"] = True
-        st.rerun() # 密碼對了立刻刷新頁面進入地圖
+        st.rerun() 
         return True
     elif password_input != "":
         st.error("😕 密碼錯誤，請再試一次。")
@@ -90,7 +103,7 @@ style_html = """
 """
 st.markdown(style_html, unsafe_allow_html=True)
 
-# --- B. 核心資料庫 (完整保留) ---
+# --- B. 核心資料庫 ---
 LRT_STATIONS = {
     "C1 籬仔內": [22.6015, 120.3204], "C2 凱旋瑞田": [22.5969, 120.3201], "C3 前鎮之星": [22.5935, 120.3159],
     "C4 凱旋中華": [22.5947, 120.3094], "C5 夢時代": [22.5950, 120.3040], "C6 經貿園區": [22.5985, 120.3023],
@@ -175,7 +188,7 @@ c_msg, c_log = st.columns(2)
 with c_msg:
     st.markdown('<div class="info-container"><div class="info-header">✍️ 作者留言</div><div class="hand-font" style="font-size:17px;">資料由 TDX 提供，拜託大家不要一直開著，我點數會不夠。</div></div>', unsafe_allow_html=True)
 with c_log:
-    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.4.1)</div><div style="font-size:12px; color:#8b949e;">• 穩定性：修復了密碼驗證時的 KeyError。<br>• 效率：簡化了密碼檢查流程。</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.4.2)</div><div style="font-size:12px; color:#8b949e;">• 字體個性化：密碼驗證頁面套用像素風 DotGothic16。<br>• 樣式隔離：確保進入地圖後恢復圓體樣式。</div></div>', unsafe_allow_html=True)
 
 time.sleep(30)
 st.rerun()
