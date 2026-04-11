@@ -19,10 +19,10 @@ def check_password():
     if st.session_state.get("password_correct", False):
         return True
     
-    st.markdown("<h2 style='text-align:center;'>🔒</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center;'> 🫪identity verification🔒 </h2>", unsafe_allow_html=True)
     
     # 直接抓取輸入框的值，不要用 callback 比較不會出錯
-    password_input = st.text_input("請輸入密碼以進入系統", type="password")
+    password_input = st.text_input("需輸入密碼驗證 🔑", type="password")
     
     if password_input == "5533":
         st.session_state["password_correct"] = True
