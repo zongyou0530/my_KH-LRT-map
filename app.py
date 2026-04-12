@@ -13,18 +13,15 @@ from streamlit_js_eval import get_geolocation
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測系統", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 🔐 簡化版密碼保護區 (新增 DotGothic16 樣式) ---
+# --- 🔐 密碼保護區 (DotGothic16 像素字體 + 左對齊) ---
 def check_password():
-    # 如果已經登入過，直接放行
     if st.session_state.get("password_correct", False):
         return True
     
-    # 這裡加入只針對密碼頁面的 CSS 樣式
+    # 載入像素字體樣式
     st.markdown("""
         <style>
             @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
-            
-            /* 強制讓密碼頁面的所有文字變成 DotGothic16 */
             .stApp, div, span, p, input, h2 {
                 font-family: 'DotGothic16', sans-serif !important;
             }
@@ -32,9 +29,9 @@ def check_password():
         </style>
     """, unsafe_allow_html=True)
     
-    st.markdown("<h2 style='text-align:center;'> 🫪 identity verification 🔒 </h2>", unsafe_allow_html=True)
+    # 標題左對齊
+    st.markdown("<h2 style='text-align:left; padding-left: 5px;'> 🫪 identity verification 🔒 </h2>", unsafe_allow_html=True)
     
-    # 直接抓取輸入框的值
     password_input = st.text_input("需輸入密碼驗證 🔑", type="password")
     
     if password_input == "5533":
@@ -46,13 +43,26 @@ def check_password():
     
     return False
 
-# 密碼檢查
 if not check_password():
     st.stop()
 
-# --- 🔓 通過後顯示的內容 (以下內容均維持原樣) ---
+# --- 🔓 通過驗證後的內容 ---
 
-# --- A. 字體與視覺樣式 ---
+# --- A. 核心演算法：Haversine 半正矢公式 ---
+def haversine_distance(coord1, coord2):
+    """計算兩點經緯度之間的球面距離 (單位: 公里)"""
+    R = 6371.0  # 地球平均半徑
+    lat1, lon1 = math.radians(coord1[0]), math.radians(coord1[1])
+    lat2, lon2 = math.radians(coord2[0]), math.radians(coord2[1])
+    
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    
+    a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+# --- B. 字體與視覺樣式 (主要頁面) ---
 font_path = "ZONGYOOOOOOU1.otf"
 hand_base64 = ""
 if os.path.exists(font_path):
@@ -72,10 +82,7 @@ style_html = """
         font-family: 'Zen Maru Gothic', sans-serif !important;
     }
 
-    .hand-font {
-        font-family: 'MyHand', sans-serif !important;
-    }
-
+    .hand-font { font-family: 'MyHand', sans-serif !important; }
     .stApp { background-color: #0e1117; color: white; }
     header { visibility: hidden; }
     
@@ -96,14 +103,13 @@ style_html = """
     .time-red { color: #ff6b6b; }
     .time-yellow { color: #ffd54f; }
     .status-info { color: #8b949e; font-size: 12px; margin-top: 3px; }
-
     .info-container { background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
     .info-header { color: #ffd54f; font-size: 14px; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #30363d; padding-bottom: 4px; }
 </style>
 """
 st.markdown(style_html, unsafe_allow_html=True)
 
-# --- B. 核心資料庫 ---
+# --- C. 核心資料庫 ---
 LRT_STATIONS = {
     "C1 籬仔內": [22.6015, 120.3204], "C2 凱旋瑞田": [22.5969, 120.3201], "C3 前鎮之星": [22.5935, 120.3159],
     "C4 凱旋中華": [22.5947, 120.3094], "C5 夢時代": [22.5950, 120.3040], "C6 經貿園區": [22.5985, 120.3023],
@@ -161,7 +167,9 @@ with col_map:
 
 with col_info:
     st_names = list(LRT_STATIONS.keys())
-    best_st = min(st_names, key=lambda n: math.sqrt((u_pos[0]-LRT_STATIONS[n][0])**2 + (u_pos[1]-LRT_STATIONS[n][1])**2))
+    # --- 關鍵修改：使用 Haversine 公式尋找最近車站 ---
+    best_st = min(st_names, key=lambda n: haversine_distance(u_pos, LRT_STATIONS[n]))
+    
     sel_st = st.selectbox("", st_names, index=st_names.index(best_st), label_visibility="collapsed")
     tid = sel_st.split()[0]
     
@@ -182,13 +190,13 @@ with col_info:
     st.markdown(f'<div class="status-info">🕒 最後更新：{now.strftime("%H:%M:%S")}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="status-info">🛰️ 讀取座標：{u_pos[0]:.4f}, {u_pos[1]:.4f}</div>', unsafe_allow_html=True)
 
-# --- D. 頁尾區 ---
+# --- D. 頁尾與留言區 ---
 st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
 c_msg, c_log = st.columns(2)
 with c_msg:
-    st.markdown('<div class="info-container"><div class="info-header">✍️ 作者留言</div><div class="hand-font" style="font-size:17px;">資料由 TDX 提供，拜託大家不要一直開著，我點數會不夠。</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-container"><div class="info-header">✍️ 作者留言</div><div class="hand-font" style="font-size:17px;">資料由 TDX 提供，拜託大家不要一直開著，點數有限請見諒。</div></div>', unsafe_allow_html=True)
 with c_log:
-    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.4.2)</div><div style="font-size:12px; color:#8b949e;">• 字體個性化：密碼驗證頁面套用像素風 DotGothic16。<br>• 樣式隔離：確保進入地圖後恢復圓體樣式。</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.4.3)</div><div style="font-size:12px; color:#8b949e;">• 演算法：改用 Haversine 球面距離公式。<br>• 安全性：驗證頁面採像素風且標題靠左對齊。</div></div>', unsafe_allow_html=True)
 
 time.sleep(30)
 st.rerun()
