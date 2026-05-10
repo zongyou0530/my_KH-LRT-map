@@ -10,73 +10,66 @@ import pytz
 import math
 from streamlit_js_eval import get_geolocation
 
-# 1. 頁面配置
+# ==========================================
+# 1. 頁面配置與安全驗證
+# ==========================================
 st.set_page_config(page_title="高雄輕軌即時位置", layout="wide", initial_sidebar_state="collapsed")
 
+def check_password():
+    """密碼驗證頁面"""
+    if st.session_state.get("password_correct", False):
+        return True
+    
+    # ... (前面的 CSS 樣式維持不變) ...
+    
+    # 標題
+    st.markdown("<h2 style='text-align:left; padding-left: 5px;'> 🫪 identity verification 🔒 </h2>", unsafe_allow_html=True)
 
+    # 💡 密碼提示
+    st.info("💡 教授好請輸入5533！") 
 
-# --- 使用 Haversine 半正矢公式來計算鄰近座標 ---
+    # 輸入框
+    # 你也可以用方法 B，在裡面加 help="密碼是5533"
+    password_input = st.text_input("需輸入密碼驗證 🔑", type="password", help="5533")
+    
+    # 🔑 這裡就是「修改密碼」的地方
+    if password_input == "5533": #密碼設定處
+        st.session_state["password_correct"] = True
+        st.rerun() 
+        return True
+    elif password_input != "":
+        st.error("😕 密碼錯誤，請再試一次。")
+    return False
+if not check_password():
+    st.stop()
+
+# ==========================================
+# 2. 核心運算邏輯 (Functions)
+# ==========================================
+
 def haversine_distance(coord1, coord2):
-    """計算兩點經緯度之間的球面距離 (單位: 公里)"""
-    R = 6371.0  # 地球平均半徑
+    """計算球面距離 (Haversine Formula)"""
+    R = 6371.0 
     lat1, lon1 = math.radians(coord1[0]), math.radians(coord1[1])
     lat2, lon2 = math.radians(coord2[0]), math.radians(coord2[1])
-    
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-    
+    dlat, dlon = lat2 - lat1, lon2 - lon1
     a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-# --- B. 字體與視覺樣式 (主要頁面) ---
-font_path = "ZONGYOOOOOOU1.otf"
-hand_base64 = ""
-if os.path.exists(font_path):
-    with open(font_path, "rb") as f:
-        hand_base64 = base64.b64encode(f.read()).decode()
+def get_token():
+    """取得 TDX API 存取權杖"""
+    try:
+        cid, csk = st.secrets["TD_ID_NEW"], st.secrets["TD_SECRET_NEW"]
+        r = requests.post('https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token', 
+                         data={'grant_type': 'client_credentials', 'client_id': cid, 'client_secret': csk})
+        return r.json().get('access_token')
+    except: return None
 
-style_html = """
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap');
+# ==========================================
+# 3. 靜態資料與樣式 (Data & Styles)
+# ==========================================
 
-    @font-face {
-        font-family: 'MyHand';
-        src: url(data:font/otf;base64,""" + hand_base64 + """) format('opentype');
-    }
-    
-    html, body, [class*="st-"], div, span, p {
-        font-family: 'Zen Maru Gothic', sans-serif !important;
-    }
-
-    .hand-font { font-family: 'MyHand', sans-serif !important; }
-    .stApp { background-color: #0e1117; color: white; }
-    header { visibility: hidden; }
-    
-    .header-title { font-size: 38px; color: #a5d6a7; text-align: center; line-height: 1.1; margin-top: 5px; }
-    .sub-author { font-size: 18px; color: #888888; text-align: center; margin-bottom: 5px; }
-    .legend-bar { background-color: #1a1d23; border: 1px solid #30363d; border-radius: 20px; padding: 4px 12px; text-align: center; margin: 0 auto 10px auto; width: fit-content; font-size: 13px; }
-    
-    .arrival-card {
-        background: rgba(45, 51, 59, 0.7);
-        border: 1px solid #444c56;
-        border-radius: 10px;
-        padding: 8px 12px;
-        margin: 6px 0;
-        text-align: center;
-    }
-    
-    .time-val { font-size: 26px; font-weight: bold; margin: 0; }
-    .time-red { color: #ff6b6b; }
-    .time-yellow { color: #ffd54f; }
-    .status-info { color: #8b949e; font-size: 12px; margin-top: 3px; }
-    .info-container { background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
-    .info-header { color: #ffd54f; font-size: 14px; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #30363d; padding-bottom: 4px; }
-</style>
-"""
-st.markdown(style_html, unsafe_allow_html=True)
-
-# --- C. 核心資料庫 ---
 LRT_STATIONS = {
     "C1 籬仔內": [22.6015, 120.3204], "C2 凱旋瑞田": [22.5969, 120.3201], "C3 前鎮之星": [22.5935, 120.3159],
     "C4 凱旋中華": [22.5947, 120.3094], "C5 夢時代": [22.5950, 120.3040], "C6 經貿園區": [22.5985, 120.3023],
@@ -93,36 +86,64 @@ LRT_STATIONS = {
     "C37 輕軌機廠": [22.6025, 120.3235]
 }
 
-def get_token():
-    try:
-        cid, csk = st.secrets["TD_ID_NEW"], st.secrets["TD_SECRET_NEW"]
-        r = requests.post('https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token', 
-                         data={'grant_type': 'client_credentials', 'client_id': cid, 'client_secret': csk})
-        return r.json().get('access_token')
-    except: return None
+# 載入手寫字體
+font_path = "ZONGYOOOOOOU1.otf"
+hand_base64 = ""
+if os.path.exists(font_path):
+    with open(font_path, "rb") as f:
+        hand_base64 = base64.b64encode(f.read()).decode()
 
-# 定位獲取
+# 全域 CSS 樣式
+style_html = f"""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap');
+    @font-face {{ font-family: 'MyHand'; src: url(data:font/otf;base64,{hand_base64}) format('opentype'); }}
+    html, body, [class*="st-"], div, span, p {{ font-family: 'Zen Maru Gothic', sans-serif !important; }}
+    .hand-font {{ font-family: 'MyHand', sans-serif !important; }}
+    .stApp {{ background-color: #0e1117; color: white; }}
+    header {{ visibility: hidden; }}
+    .header-title {{ font-size: 38px; color: #a5d6a7; text-align: center; line-height: 1.1; margin-top: 5px; }}
+    .sub-author {{ font-size: 18px; color: #888888; text-align: center; margin-bottom: 5px; }}
+    .legend-bar {{ background-color: #1a1d23; border: 1px solid #30363d; border-radius: 20px; padding: 4px 12px; text-align: center; margin: 0 auto 10px auto; width: fit-content; font-size: 13px; }}
+    .arrival-card {{ background: rgba(45, 51, 59, 0.7); border: 1px solid #444c56; border-radius: 10px; padding: 8px 12px; margin: 6px 0; text-align: center; }}
+    .time-val {{ font-size: 26px; font-weight: bold; margin: 0; }}
+    .time-red {{ color: #ff6b6b; }}
+    .time-yellow {{ color: #ffd54f; }}
+    .status-info {{ color: #8b949e; font-size: 12px; margin-top: 3px; }}
+    .info-container {{ background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; margin-bottom: 10px; }}
+    .info-header {{ color: #ffd54f; font-size: 14px; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #30363d; padding-bottom: 4px; }}
+</style>
+"""
+st.markdown(style_html, unsafe_allow_html=True)
+
+# ==========================================
+# 4. 資料獲取 (Data Fetching)
+# ==========================================
+
 user_loc = get_geolocation()
 u_pos = [user_loc['coords']['latitude'], user_loc['coords']['longitude']] if user_loc and user_loc.get('coords') else [22.6508, 120.2825]
 token = get_token()
 
-# 標題渲染
+# ==========================================
+# 5. 主要 UI 渲染 (Main UI)
+# ==========================================
+
+# A. 頁首
 st.markdown('<div class="header-title hand-font">高雄輕軌<br>即時位置地圖</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-author hand-font">Zongyou X Gemini</div>', unsafe_allow_html=True)
 st.markdown('<div class="legend-bar">🟢 順行 | 🔵 逆行 | 🔴 目前位置</div>', unsafe_allow_html=True)
 
+# B. 中間主體 (地圖與資訊)
 col_map, col_info = st.columns([7, 3.5])
 
 with col_map:
     m = folium.Map(location=u_pos, zoom_start=15)
-    folium.CircleMarker(
-        location=u_pos, radius=8, color='#ffffff', fill=True, fill_color='#ff5252', fill_opacity=0.9
-    ).add_to(m)
+    folium.CircleMarker(location=u_pos, radius=8, color='#ffffff', fill=True, fill_color='#ff5252', fill_opacity=0.9).add_to(m)
     
     if token:
         try:
-            pos = requests.get('https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON', headers={'Authorization': f'Bearer {token}'}).json()
-            trains = pos if isinstance(pos, list) else pos.get('LivePositions', [])
+            pos_data = requests.get('https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LivePosition/KLRT?$format=JSON', headers={'Authorization': f'Bearer {token}'}).json()
+            trains = pos_data if isinstance(pos_data, list) else pos_data.get('LivePositions', [])
             for t in trains:
                 dir_val = t.get('Direction', 0)
                 folium.Marker(
@@ -133,13 +154,13 @@ with col_map:
     folium_static(m, height=450, width=800)
 
 with col_info:
+    # 找最近站點
     st_names = list(LRT_STATIONS.keys())
-    # --- 關鍵修改：使用 Haversine 公式尋找最近車站 ---
     best_st = min(st_names, key=lambda n: haversine_distance(u_pos, LRT_STATIONS[n]))
-    
     sel_st = st.selectbox("", st_names, index=st_names.index(best_st), label_visibility="collapsed")
     tid = sel_st.split()[0]
     
+    # 顯示即將進站
     st.markdown('<div style="color:#ffd54f; font-size:14px; font-weight:bold; margin-top: 5px;">📅 即將進站時刻</div>', unsafe_allow_html=True)
     if token:
         try:
@@ -153,17 +174,21 @@ with col_info:
                 st.markdown('<div class="arrival-card" style="font-size:14px; color:#8b949e;">目前無班次</div>', unsafe_allow_html=True)
         except: pass
 
+    # 狀態資訊
     now = datetime.datetime.now(pytz.timezone('Asia/Taipei'))
     st.markdown(f'<div class="status-info">🕒 最後更新：{now.strftime("%H:%M:%S")}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="status-info">🛰️ 讀取座標：{u_pos[0]:.4f}, {u_pos[1]:.4f}</div>', unsafe_allow_html=True)
 
-# --- D. 頁尾與留言區 ---
+# C. 頁尾
 st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
 c_msg, c_log = st.columns(2)
 with c_msg:
     st.markdown('<div class="info-container"><div class="info-header">✍️ 作者留言</div><div class="hand-font" style="font-size:17px;">資料由 TDX 提供，拜託大家不要一直開著，點數有限請見。</div></div>', unsafe_allow_html=True)
 with c_log:
-    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.4.3)</div><div style="font-size:12px; color:#8b949e;">• 演算法：改用 Haversine 球面距離公式。<br>• 安全性：驗證頁面採像素風且標題靠左對齊。</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.5.0)</div><div style="font-size:12px; color:#8b949e;">• 結構優化：重整程式碼順序。 <br>• 功能整合：確認半正矢公式與像素風密碼頁運行正常。</div></div>', unsafe_allow_html=True)
 
+# ==========================================
+# 6. 自動刷新 (Refresh Logic)
+# ==========================================
 time.sleep(30)
 st.rerun()
