@@ -34,8 +34,8 @@ def check_password():
         </style>
     """, unsafe_allow_html=True)
     
-    st.markdown("<h2 style='text-align:left; color:#a5d6a7;'> 🫪 IDENTITY VERIFICATION 🔒 </h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:left; color:#888;'>💡 提示：密碼是 55XX (經典男團)</p>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:left; color:#a5d6a7;'> IDENTITY VERIFICATION 🔒 </h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:left; color:#888;'>💡 教授好 密碼為5533 </p>", unsafe_allow_html=True)
     
     password_input = st.text_input("ENTER PASSWORD", type="password")
     
