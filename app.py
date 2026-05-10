@@ -13,38 +13,7 @@ from streamlit_js_eval import get_geolocation
 # 1. 頁面配置
 st.set_page_config(page_title="高雄輕軌監測系統", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 🔐 密碼保護區 (DotGothic16 像素字體 + 左對齊) ---
-def check_password():
-    if st.session_state.get("password_correct", False):
-        return True
-    
-    # 載入像素字體樣式
-    st.markdown("""
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
-            .stApp, div, span, p, input, h2 {
-                font-family: 'DotGothic16', sans-serif !important;
-            }
-            .stApp { background-color: #0e1117; }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    # 標題左對齊
-    st.markdown("<h2 style='text-align:left; padding-left: 5px;'> 🫪 identity verification 🔒 </h2>", unsafe_allow_html=True)
-    
-    password_input = st.text_input("需輸入密碼驗證 🔑", type="password")
-    
-    if password_input == "5533":
-        st.session_state["password_correct"] = True
-        st.rerun() 
-        return True
-    elif password_input != "":
-        st.error("😕 密碼錯誤，請再試一次。")
-    
-    return False
 
-if not check_password():
-    st.stop()
 
 # --- 🔓 通過驗證後的內容 ---
 
