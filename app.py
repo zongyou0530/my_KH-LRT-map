@@ -26,7 +26,7 @@ def check_password():
             .stApp {
                 font-family: 'DotGothic16', sans-serif !important;
                 background-color: #0e1117;
-                letter-spacing: 2px;
+                letter-spacing: 4px;
             }
             h2, label, input, button, .stMarkdown p {
                 font-family: 'DotGothic16', sans-serif !important;
