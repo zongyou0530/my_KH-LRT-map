@@ -11,13 +11,11 @@ import math
 from streamlit_js_eval import get_geolocation
 
 # 1. 頁面配置
-st.set_page_config(page_title="高雄輕軌監測系統", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="高雄輕軌即時位置", layout="wide", initial_sidebar_state="collapsed")
 
 
 
-# --- 🔓 通過驗證後的內容 ---
-
-# --- A. 核心演算法：Haversine 半正矢公式 ---
+# --- 使用 Haversine 半正矢公式來計算鄰近座標 ---
 def haversine_distance(coord1, coord2):
     """計算兩點經緯度之間的球面距離 (單位: 公里)"""
     R = 6371.0  # 地球平均半徑
@@ -163,7 +161,7 @@ with col_info:
 st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
 c_msg, c_log = st.columns(2)
 with c_msg:
-    st.markdown('<div class="info-container"><div class="info-header">✍️ 作者留言</div><div class="hand-font" style="font-size:17px;">資料由 TDX 提供，拜託大家不要一直開著，點數有限請見諒。</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-container"><div class="info-header">✍️ 作者留言</div><div class="hand-font" style="font-size:17px;">資料由 TDX 提供，拜託大家不要一直開著，點數有限請見。</div></div>', unsafe_allow_html=True)
 with c_log:
     st.markdown('<div class="info-container"><div class="info-header">📦 系統更新紀錄 (v1.4.3)</div><div style="font-size:12px; color:#8b949e;">• 演算法：改用 Haversine 球面距離公式。<br>• 安全性：驗證頁面採像素風且標題靠左對齊。</div></div>', unsafe_allow_html=True)
 
