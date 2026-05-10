@@ -41,7 +41,7 @@ def check_password():
     """, unsafe_allow_html=True)
     
     st.markdown("<h2 style='text-align:left; color:#a5d6a7;'> 🫪 IDENTITY VERIFICATION 🔒 </h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:left; color:#888; font-size:16px;'>💡 教授您好：密碼為 5533</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:left; color:#888; font-size:16px;'>💡 教授您好：為了防止使用時因TDX提供的用量耗盡 所以需輸入密碼 5533</p>", unsafe_allow_html=True)
     
     password_input = st.text_input("ENTER PASSWORD", type="password")
     
