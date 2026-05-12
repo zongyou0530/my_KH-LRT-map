@@ -11,9 +11,9 @@ import math
 from streamlit_js_eval import get_geolocation
 
 # ==========================================
-# 1. 頁面配置與安全驗證
+# 1. 頁面配置與安全驗證 (目前已暫時停用
 # ==========================================
-st.set_page_config(page_title="高雄輕軌即時位置", layout="wide", initial_sidebar_state="collapsed")
+"""st.set_page_config(page_title="高雄輕軌即時位置", layout="wide", initial_sidebar_state="collapsed")
 
 def check_password():
     """密碼驗證頁面 (優化字距與字體)"""
@@ -55,7 +55,7 @@ def check_password():
 
 if not check_password():
     st.stop()
-
+"""
 # ==========================================
 # 2. 核心運算邏輯
 # ==========================================
