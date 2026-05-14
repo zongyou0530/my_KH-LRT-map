@@ -14,7 +14,7 @@ from streamlit_js_eval import get_geolocation  # 呼叫瀏覽器的 JavaScript �
 # 1. 頁面基礎配置
 # ==========================================
 # 設定網頁標題、佈局為寬版，並預設隱藏側邊欄
-st.set_page_config(page_title="高雄輕軌即時監測", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="高雄輕軌即時資訊", layout="wide", initial_sidebar_state="collapsed")
 
 # ==========================================
 # 2. 字體處理與 CSS 樣式 (關鍵：手寫體與發光特效)
