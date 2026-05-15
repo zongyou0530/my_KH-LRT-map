@@ -257,7 +257,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.markdown(f"""
 <div class="info-container hand-font">
     <p style="color:#ffd54f; font-weight:bold; margin-bottom:8px;">💡 作者留言：</p>
-    <p style="font-size:16px; color:#ccd6f6;">不要一直開著頁面，TDX API 的用量有限。<br>測試與展示完畢後請關閉網頁。😁😁</p>
+    <p style="font-size:16px; color:#ccd6f6;">不要一直開著頁面，TDX API 的用量有限。<br>看過後後拜託記得關掉。😁😁</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -266,9 +266,8 @@ st.markdown("""
 <div class="info-container">
     <p style="color:#a5d6a7; font-weight:bold; margin-bottom:8px;">📦 版本紀錄 v1.7.3</p>
     <p style="font-size:13px; color:#8b949e; line-height:1.6;">
-        • <b>佈局修正</b>：修復 CSS 遺失導致的版面跑掉問題。<br>
-        • <b>樣式還原</b>：找回霓虹發光效果與自定義手寫體支援。<br>
-        • <b>程式解說</b>：加入完整的零基礎教學註解。
+        • <b>佈局修正</b>：原本跑掉的格式就回來啦嘿嘿。<br>
+        • <b>樣式</b>：字體效果更新。
     </p>
 </div>
 """, unsafe_allow_html=True)
