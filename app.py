@@ -31,7 +31,7 @@ if os.path.exists(font_path):
     with open(font_path, "rb") as f:
         hand_base64 = base64.b64encode(f.read()).decode()
 
-# --- CSS 魔法區：定義網頁的所有視覺樣式 ---
+# --- CSS 魔法區：定義網頁的所有視覺樣式 (已加入切除白線與圖標顏色修正) ---
 style_html = f"""
 <style>
     /* 引入 Google 圓體字作為基礎字體 */
@@ -48,16 +48,23 @@ style_html = f"""
         font-family: 'Zen Maru Gothic', sans-serif;
     }}
 
+    /* 深色模式背景設定 */
+    .stApp {{ background-color: #0e1117; color: white; }}
+    
+    /* 🔥【核心修復：切除畫面上方所有白線與預設裝飾】 */
+    header, [data-testid="stHeader"], .st-emotion-cache-18ni7th, hr, .stHr, [data-testid="stDecoration"] {{ 
+        visibility: hidden !important; 
+        display: none !important; 
+        height: 0px !important;
+    }}
+    .main .block-container {{
+        padding-top: 2rem !important;
+    }}
+
     /* 指定 class="hand-font" 的標籤使用我們的手寫體 */
     .hand-font {{
         font-family: 'MyHand' !important;
     }}
-
-    /* 深色模式背景設定 */
-    .stApp {{ background-color: #0e1117; color: white; }}
-    
-    /* 隱藏 Streamlit 預設的頁首裝飾 */
-    header {{ visibility: hidden; }}
 
     /* 容器樣式：外層的深色大卡片 */
     .info-container {{ 
@@ -85,6 +92,10 @@ style_html = f"""
     .dir-label {{ font-size: 14px; color: #8b949e; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }}
     .time-container {{ display: flex; align-items: center; gap: 10px; }}
     .time-hand-label {{ font-size: 26px; color: #eee; }}
+
+    /* 🔥【核心修復：還原站牌圓形圖標顏色與發光效果】 */
+    .cw-dot {{ color: #51cf66 !important; text-shadow: 0 0 8px rgba(81,207,102,0.8); font-size: 18px; }}  /* 順行圓點亮綠色 */
+    .ccw-dot {{ color: #339af0 !important; text-shadow: 0 0 8px rgba(51,154,240,0.8); font-size: 18px; }} /* 逆行圓點亮藍色 */
 
     /* 時間數字：手寫體 + 霓虹發光特效 */
     .time-val {{
@@ -216,12 +227,12 @@ with col_right:
             b_url = f"https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/LiveBoard/KLRT?$filter=StationID eq '{tid}'&$format=JSON"
             b_res = requests.get(b_url, headers={'Authorization': f'Bearer {token}'}).json()
             
-            # 分類資料：順行 (方向0) 與 逆行 (方向1)
+            # 分類資料：順行 與 逆行
             cw_list = [i for i in b_res if "順行" in i.get('TripHeadSign', '')]
             ccw_list = [i for i in b_res if "逆行" in i.get('TripHeadSign', '')]
 
-            # 定義到站時間顯示邏輯的內部函式
-            def show_arrival(data, label, color_class):
+            # 定義到站時間顯示邏輯的內部函式 (已加上獨立 dot-class 處理圖標顏色)
+            def show_arrival(data, label, color_class, dot_class):
                 if data:
                     item = min(data, key=lambda x: x.get('EstimateTime', 999))
                     val = int(item.get('EstimateTime', 0))
@@ -230,7 +241,7 @@ with col_right:
                     unit = "" if val <= 1 else "分鐘"
                     prefix = "約" if val > 1 else ""
                     st.markdown(f'''<div class="arrival-card">
-                        <div class="dir-label"><span>●</span> {label}</div>
+                        <div class="dir-label"><span class="{dot_class}">●</span> {label}</div>
                         <div class="time-container">
                             <span class="hand-font time-hand-label">{prefix}</span>
                             <span class="time-val {color_class}">{display_time}</span>
@@ -238,8 +249,9 @@ with col_right:
                         </div>
                     </div>''', unsafe_allow_html=True)
 
-            show_arrival(cw_list, "順行方向", "time-cw")
-            show_arrival(ccw_list, "逆行方向", "time-ccw")
+            # 呼叫並傳入對應的發光數字 class 與 圖標顏色 class
+            show_arrival(cw_list, "順行方向", "time-cw", "cw-dot")
+            show_arrival(ccw_list, "逆行方向", "time-ccw", "ccw-dot")
         except: st.error("API 資料解析失敗")
     
     st.markdown('</div>', unsafe_allow_html=True) # 結束容器
@@ -257,17 +269,17 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.markdown(f"""
 <div class="info-container hand-font">
     <p style="color:#ffd54f; font-weight:bold; margin-bottom:8px;">💡 作者留言：</p>
-    <p style="font-size:16px; color:#ccd6f6;">不要一直開著頁面，TDX API 的用量有限。<br>看過後後拜託記得關掉。😁😁</p>
+    <p style="font-size:16px; color:#ccd6f6;">不要一直開著頁面，TDX API 的用量有限。<br>看完拜託關閉網頁。😁😁</p>
 </div>
 """, unsafe_allow_html=True)
 
 # 版本資訊
 st.markdown("""
 <div class="info-container">
-    <p style="color:#a5d6a7; font-weight:bold; margin-bottom:8px;">📦 版本紀錄 v1.7.3</p>
+    <p style="color:#a5d6a7; font-weight:bold; margin-bottom:8px;">📦 版本紀錄 v1.7.4</p>
     <p style="font-size:13px; color:#8b949e; line-height:1.6;">
-        • <b>佈局修正</b>：原本跑掉的格式就回來啦嘿嘿。<br>
-        • <b>樣式</b>：字體效果更新。
+        • <b>小修改</b>：1234567676789<br>
+        • <b>圖標上色</b>：將順行與逆行方向標題前方的圓形圖標畫上綠色還有藍色。
     </p>
 </div>
 """, unsafe_allow_html=True)
